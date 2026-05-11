@@ -1,15 +1,10 @@
 import random
 import tkinter as tk
+from words import woerter
 
-woerter = [
-    "kirk", "clanker", "edit", "slop", "AIslop",
-    "claude", "charlie", "kirkenses", "panem", "chicken",
-    "wings", "what", "naur", "fryrice", "roger",
-    "whoop", "belt", "boba", "noodle", "food",
-    "water", "yess", "flat", "cooked", "fried"
-]
+MainWords =woerter
 
-random.shuffle(woerter)
+random.shuffle(MainWords)
 
 root = tk.Tk()
 root.title("grid")
