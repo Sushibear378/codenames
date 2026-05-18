@@ -3,14 +3,14 @@ import socket
 from login import assign_role_color
 
 SERVER_IP = '10.97.36.101'
-PORT      = 5000
+PORT      = 50001
 
 
 def run_server() -> tuple[str, str]:
     assignments = assign_role_color()
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    srv.bind((SERVER_IP, PORT))
+    srv.bind(('', PORT))
     srv.listen(3)
     print("Server listening...")
     for i in range(1, 4):
