@@ -1,5 +1,6 @@
 import sys
 import socket
+import threading
 from login import assign_role_color
 
 SERVER_IP = '10.97.36.101'
@@ -33,10 +34,14 @@ def run_client() -> tuple[str, str]:
 
 
 if __name__ == "__main__":
+    from ui import CodenamesUI
     if len(sys.argv) > 1 and sys.argv[1] == "server":
-        role, color = run_server()
+        ui = CodenamesUI()
+        def _server():
+            role, color = run_server()
+            ui.root.after(0, ui.show_role, role, color)
+        threading.Thread(target=_server, daemon=True).start()
+        ui.run()
     else:
         role, color = run_client()
-
-    from ui import CodenamesUI
-    CodenamesUI(role, color).run()
+        CodenamesUI(role, color).run()
