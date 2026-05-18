@@ -1,20 +1,66 @@
+# ui.py
 import tkinter as tk
-from words import woerter
-import random
+from tkinter import simpledialog, messagebox
+import subprocess
+import sys
 
-MainWords = woerter
+class CodenamesUI:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Codenames")
+        self.is_host = False
+        self.server_proc = None
+        self.client_proc = None
+        self.setup_start_screen()
 
-def SpielrundeUI():
-    random.shuffle(MainWords)
+    def setup_start_screen(self):
+        for widget in self.root.winfo_children():
+            widget.destroy()
+        tk.Label(self.root, text="Codenames", font=("Arial", 18)).pack(pady=10)
+        tk.Button(self.root, text="Host", width=20, command=self.start_host).pack(pady=5)
+        tk.Button(self.root, text="Client", width=20, command=self.start_client).pack(pady=5)
 
-    root = tk.Tk()
-    root.title("grid")
+    def start_host(self):
+        self.is_host = True
+        # Start main.py as server (non-blocking)
+        self.server_proc = subprocess.Popen([sys.executable, "main.py", "server"])
+        self.show_lobby()
 
-    for i in range(5):
-        for j in range(5):
-            wort = woerter[i * 5 + j]
-            label = tk.Label(root, text=wort, width=12, height=3, borderwidth=2, relief="groove")
-            label.grid(row=i, column=j, padx=2, pady=2)
+    def start_client(self):
+        self.is_host = False
+        server_ip = simpledialog.askstring("Server IP", "Enter server IP:")
+        if not server_ip:
+            return
+        # Start main.py as client (non-blocking)
+        self.client_proc = subprocess.Popen([sys.executable, "main.py"], stdin=subprocess.PIPE)
+        self.client_proc.stdin.write((server_ip + "\n").encode())
+        self.client_proc.stdin.flush()
+        self.show_lobby()
+
+    def show_lobby(self):
+        lobby = tk.Toplevel(self.root)
+        lobby.title("Lobby")
+        tk.Label(lobby, text="Waiting for 4 players...", font=("Arial", 14)).pack(pady=10)
+        if self.is_host:
+            tk.Button(lobby, text="Start Game", command=lambda: [lobby.destroy(), self.show_game_grid()]).pack(pady=10)
+
+    def show_game_grid(self):
+        # Dummy data, replace with real data from controller.py
+        words = [f"Word{i+1}" for i in range(25)]
+        colors = ['red']*8 + ['blue']*8 + ['white']*8 + ['black']
+        import random
+        random.shuffle(words)
+        random.shuffle(colors)
+        grid = tk.Toplevel(self.root)
+        grid.title("Codenames Game")
+        for i in range(5):
+            for j in range(5):
+                idx = i*5 + j
+                word = words[idx]
+                color = colors[idx]
+                bg = {"red": "#ffcccc", "blue": "#ccccff", "white": "#f8f8f8", "black": "#222222"}[color]
+                fg = "black" if color != "black" else "white"
+                tk.Label(grid, text=word, width=12, height=3, borderwidth=2, relief="groove", bg=bg, fg=fg).grid(row=i, column=j, padx=2, pady=2)
 
     root.mainloop()
 
