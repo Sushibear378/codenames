@@ -1,6 +1,6 @@
 from itertools import product
 
-PlayerRoles = ["instruct", "agent"]
+PlayerRoles = ["instructor", "agent"]
 TeamColors = ["Red", "Blue"]
 
 # Generate all unique (role, color) pairs
