@@ -1,5 +1,6 @@
 import tkinter as tk
 from words import woerter
+from login import get_assignment
 import random
 
 MainWords = woerter
@@ -18,7 +19,14 @@ def SpielrundeUI():
 
     root.mainloop()
 
-def StartingScreenUI():
-    window = tk.Tk();
+def StartingScreenUI(player_id: str):
+    role, team = get_assignment(player_id)
+
+    window = tk.Tk()
     window.title("Codenames")
-    label = tk.Label(text= "Willkommen bei Codenames. Du bist im Team " + "Deine Rolle in der ersten Runde ist " + "Viel Spaß!") #!Hier noch konkrete Rollen hinzufügen, nachdem die Logik durch ist. 
+    label = tk.Label(
+        window,
+        text=f"Willkommen bei Codenames. Du bist im Team {team}. Deine Rolle in der ersten Runde ist {role}. Viel Spaß!"
+    )
+    label.pack(padx=20, pady=20)
+    window.mainloop()

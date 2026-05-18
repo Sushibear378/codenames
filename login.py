@@ -15,7 +15,7 @@ def assign_role_color():
             assignments[f'client_{i}'] = pair
     return assignments
 
-# Example usage
-assignments = assign_role_color()
-print(assignments)
-# Output: {'server': ('instruct', 'Red'), 'client_1': ('instruct', 'Blue'), 'client_2': ('agent', 'Red'), 'client_3': ('agent', 'Blue')}
+def get_assignment(player_id: str) -> tuple[str, str]:
+    """Return (role, team_color) for a given player_id."""
+    assignments = assign_role_color()
+    return assignments[player_id]
