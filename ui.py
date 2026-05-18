@@ -1,4 +1,4 @@
-# ui.py
+#python
 import tkinter as tk
 from tkinter import simpledialog, messagebox
 import subprocess
@@ -62,7 +62,8 @@ class CodenamesUI:
                 fg = "black" if color != "black" else "white"
                 tk.Label(grid, text=word, width=12, height=3, borderwidth=2, relief="groove", bg=bg, fg=fg).grid(row=i, column=j, padx=2, pady=2)
 
-    root.mainloop()
+    def run(self):
+        self.root.mainloop()
 
 def StartingScreenUI(role: str, color: str):
     BG        = "#0f1923"
@@ -112,3 +113,7 @@ def StartingScreenUI(role: str, color: str):
     btn.pack()
 
     window.mainloop()
+
+if __name__ == "__main__":
+    ui = CodenamesUI()
+    ui.run()
