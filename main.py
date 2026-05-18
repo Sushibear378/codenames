@@ -3,6 +3,8 @@ import sys
 from login import assign_role_color
 import socket
 
+from ui import StartingScreenUI
+
 def start_server():
     assignments = assign_role_color()
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -18,9 +20,9 @@ def start_server():
     server_role, server_color = assignments['server']
     return server_role, server_color
 
-def start_client(server_ip):
+def start_client():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect((server_ip, 5000))
+    client.connect(('10.97.36.101', 5000))
     data = client.recv(1024).decode()
     role, color = data.split(',')
     client.close()
@@ -29,8 +31,7 @@ def start_client(server_ip):
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "server":
         role, color = start_server()
-        print(f"Server assigned role: {role}, color: {color}")
+        StartingScreenUI(role,color)
     else:
-        server_ip = input("Enter server IP: ")
-        role, color = start_client(server_ip)
-        print(f"Client assigned role: {role}, color: {color}")
+        role, color = start_client()
+        StartingScreenUI(role,color)
