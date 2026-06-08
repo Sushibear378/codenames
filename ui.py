@@ -413,7 +413,8 @@ class CodenamesUI:
                      fg=label_fg, bg=BAR_BG).pack(side=tk.LEFT, padx=6)
 
     def _build_agent_controls(self, parent, state: dict, active_team: str, can_guess: bool):
-        hint = state["current_hint"]
+        hint    = state["current_hint"]
+        guesses = state["guesses_remaining"]
 
         ctrl = tk.Frame(parent, bg=BG)
         ctrl.pack(pady=(12, 0))
