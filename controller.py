@@ -96,7 +96,7 @@ class GameController:
             return {"ok": False, "error": "Anzahl muss mindestens 1 sein."}
 
         self.current_hint      = (word, count)
-        self.guesses_remaining = count + 1  # Standard-Codenames: Zahl + 1 Bonusversuch
+        self.guesses_remaining = -1  # -1 = unbegrenzt
         return {"ok": True, "state": self.get_state()}
 
     # ── Agenten-Aktion: Kachel aufdecken ─────────────────────────────────────
@@ -165,7 +165,8 @@ class GameController:
             else:
                 self.blue_found += 1
 
-            self.guesses_remaining -= 1
+            if self.guesses_remaining != -1:
+                self.guesses_remaining -= 1
 
             needed = RED_COUNT if self.active_team == "Red" else BLUE_COUNT
             found  = self.red_found if self.active_team == "Red" else self.blue_found

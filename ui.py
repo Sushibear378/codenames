@@ -245,7 +245,7 @@ class CodenamesUI:
                            self.color and
                            self.color.lower() == active_team.lower() and
                            not round_over)
-        can_guess       = is_active_agent and hint is not None and guesses > 0
+        can_guess       = is_active_agent and hint is not None and (guesses > 0 or guesses == -1)
         is_active_instructor = (
             is_instructor and
             self.color and self.color.lower() == active_team.lower() and
@@ -427,8 +427,9 @@ class CodenamesUI:
                      text=f'Hinweis: "{word}"  ({count})',
                      font=("Helvetica Neue", 16, "bold"),
                      fg=self._team_color(active_team), bg=BG).pack(side=tk.LEFT, padx=(0, 24))
+            guesses_text = "∞" if guesses == -1 else str(guesses)
             tk.Label(ctrl,
-                     text=f"Versuche: {guesses}",
+                     text=f"Versuche: {guesses_text}",
                      font=("Helvetica Neue", 14),
                      fg=FG_MUTED, bg=BG).pack(side=tk.LEFT, padx=(0, 24))
         else:
