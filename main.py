@@ -11,10 +11,11 @@ PORT      = 50001
 
 # ── Shared server state ───────────────────────────────────────────────────────
 
-_clients:      list                    = []
-_clients_lock                          = threading.Lock()
-_controller:   GameController | None   = None
-_game_started                          = threading.Event()
+_clients:                list                   = []
+_clients_lock                                   = threading.Lock()
+_controller:             GameController | None  = None
+_game_started                                   = threading.Event()
+_server_on_state_update: callable | None        = None
 
 
 def _send(conn: socket.socket, msg: dict):
@@ -31,6 +32,30 @@ def _broadcast(msg: dict):
                 pass
 
 
+def _handle_action(color: str, msg: dict) -> None:
+    """Verarbeitet eine Spielaktion (submit_hint / reveal_tile / end_turn)
+    und sendet den neuen Zustand an alle Clients und den Server-Spieler."""
+    global _controller
+    if _controller is None:
+        return
+
+    mtype  = msg.get("type")
+    result = None
+
+    if mtype == "submit_hint":
+        result = _controller.submit_hint(color, msg["word"], msg["count"])
+    elif mtype == "reveal_tile":
+        result = _controller.reveal_tile(color, msg["word"])
+    elif mtype == "end_turn":
+        result = _controller.end_turn(color)
+
+    if result and result.get("ok"):
+        state = result["state"]
+        _broadcast({"type": "state_update", "state": state})
+        if _server_on_state_update:
+            _server_on_state_update(state)
+
+
 def _client_thread(conn: socket.socket, role: str, color: str):
     global _controller
     _send(conn, {"type": "login", "role": role, "color": color})
@@ -39,7 +64,7 @@ def _client_thread(conn: socket.socket, role: str, color: str):
         _clients.append((conn, role, color))
         count = len(_clients)
 
-    if count == 3:  # alle 4 Spieler verbunden (Server + 3 Clients)
+    if count == 3:  # alle 3 Clients verbunden → Spiel startet
         _controller = GameController()
         _game_started.set()
         _broadcast({"type": "game_start", "state": _controller.get_state()})
@@ -54,7 +79,7 @@ def _client_thread(conn: socket.socket, role: str, color: str):
             while "\n" in buf:
                 line, buf = buf.split("\n", 1)
                 if line.strip():
-                    _handle_msg(conn, role, color, json.loads(line))
+                    _handle_action(color, json.loads(line))
     except OSError:
         pass
     finally:
@@ -63,22 +88,19 @@ def _client_thread(conn: socket.socket, role: str, color: str):
             _clients[:] = [(c, r, col) for c, r, col in _clients if c is not conn]
 
 
-def _handle_msg(*_):
-    # Platzhalter für spätere Spielaktionen (submit_hint, reveal_tile, end_turn)
-    pass
-
-
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def run_server(on_game_start=None) -> tuple[str, str]:
+def run_server(on_game_start=None, on_state_update=None) -> tuple[str, str, callable]:
     """
-    Bindet den Server-Socket, nimmt 3 Clients an und startet Runde 1
-    automatisch, sobald alle 4 Spieler verbunden sind.
-    on_game_start(state) wird aus dem Accept-Thread aufgerufen
-    (in tkinter-Apps: als lambda mit root.after(0, ...) übergeben).
-    Gibt sofort die Rolle des Server-Spielers zurück.
+    Startet den Server, nimmt 3 Clients an und gibt (role, color, send_fn) zurück.
+    send_fn(msg) schickt eine Spielaktion des Server-Spielers direkt an den Controller.
+    on_state_update(state) wird aufgerufen, wenn sich der Spielzustand ändert.
     """
+    global _server_on_state_update
+    _server_on_state_update = on_state_update
+
     assignments = assign_role_color()
+    server_role, server_color = assignments['server']
 
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -101,15 +123,18 @@ def run_server(on_game_start=None) -> tuple[str, str]:
             on_game_start(_controller.get_state())
 
     threading.Thread(target=_accept_loop, daemon=True).start()
-    return assignments['server']
+
+    def send_fn(msg: dict):
+        _handle_action(server_color, msg)
+
+    return server_role, server_color, send_fn
 
 
-def run_client(on_game_start=None) -> tuple[str, str]:
+def run_client(on_game_start=None, on_state_update=None) -> tuple[str, str, callable]:
     """
-    Verbindet mit dem Server, empfängt die Rollenzuweisung und wartet im
-    Hintergrund auf game_start.
-    on_game_start(state) wird aus dem Listener-Thread aufgerufen
-    (in tkinter-Apps: als lambda mit root.after(0, ...) übergeben).
+    Verbindet mit dem Server und gibt (role, color, send_fn) zurück.
+    send_fn(msg) sendet eine Spielaktion an den Server.
+    on_state_update(state) wird aufgerufen, wenn der Server einen neuen Zustand schickt.
     """
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect((SERVER_IP, PORT))
@@ -135,13 +160,19 @@ def run_client(on_game_start=None) -> tuple[str, str]:
                     if not line.strip():
                         continue
                     m = json.loads(line)
-                    if m.get("type") == "game_start" and on_game_start:
+                    if m["type"] == "game_start" and on_game_start:
                         on_game_start(m["state"])
+                    elif m["type"] == "state_update" and on_state_update:
+                        on_state_update(m["state"])
             except OSError:
                 break
 
     threading.Thread(target=_listen, daemon=True).start()
-    return role, color
+
+    def send_fn(msg: dict):
+        client.sendall((json.dumps(msg) + "\n").encode())
+
+    return role, color, send_fn
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -151,19 +182,31 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 1 and sys.argv[1] == "server":
         ui = CodenamesUI()
+
         def _server():
-            role, color = run_server(
+            role, color, send_fn = run_server(
                 on_game_start=lambda state: ui.root.after(0, ui.show_game_from_state, state),
+                on_state_update=lambda state: ui.root.after(0, ui.show_game_from_state, state),
             )
+            ui.on_submit_hint = lambda word, count: send_fn({"type": "submit_hint", "word": word, "count": count})
+            ui.on_tile_click  = lambda word: send_fn({"type": "reveal_tile", "word": word})
+            ui.on_end_turn    = lambda: send_fn({"type": "end_turn"})
             ui.root.after(0, ui.show_role, role, color)
+
         threading.Thread(target=_server, daemon=True).start()
         ui.run()
     else:
         ui = CodenamesUI()
+
         def _client():
-            role, color = run_client(
+            role, color, send_fn = run_client(
                 on_game_start=lambda state: ui.root.after(0, ui.show_game_from_state, state),
+                on_state_update=lambda state: ui.root.after(0, ui.show_game_from_state, state),
             )
+            ui.on_submit_hint = lambda word, count: send_fn({"type": "submit_hint", "word": word, "count": count})
+            ui.on_tile_click  = lambda word: send_fn({"type": "reveal_tile", "word": word})
+            ui.on_end_turn    = lambda: send_fn({"type": "end_turn"})
             ui.root.after(0, ui.show_role, role, color)
+
         threading.Thread(target=_client, daemon=True).start()
         ui.run()
