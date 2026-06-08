@@ -89,8 +89,22 @@ class CodenamesUI:
         nlp        = _get_nlp()
         norm_grid  = [_normalize(w) for w in grid_words]
 
+        _vowels = set('aeiouäöüAEIOUÄÖÜ')
+
         for word in hint_words:
             norm_word = _normalize(word)
+
+            # ── Basis-Plausibilitätsprüfung ────────────────────────────────
+            if not re.match(r'^[a-zA-ZäöüÄÖÜß]+$', word):
+                return False, f"'{word}' enthält ungültige Zeichen"
+            if len(word) < 2:
+                return False, f"'{word}' ist zu kurz"
+            if not any(c in _vowels for c in word):
+                return False, f"'{word}' enthält keine Vokale"
+            if sum(1 for c in word if c in _vowels) / len(word) < 0.10:
+                return False, f"'{word}' sieht nicht wie ein deutsches Wort aus"
+            if re.search(r'(.)\1{3,}', word, re.IGNORECASE):
+                return False, f"'{word}' enthält zu viele gleiche Zeichen hintereinander"
 
             # ── POS check via spaCy ─────────────────────────────────────────
             if nlp:
@@ -415,8 +429,7 @@ class CodenamesUI:
                      fg=label_fg, bg=BAR_BG).pack(side=tk.LEFT, padx=6)
 
     def _build_agent_controls(self, parent, state: dict, active_team: str, can_guess: bool):
-        hint    = state["current_hint"]
-        guesses = state["guesses_remaining"]
+        hint = state["current_hint"]
 
         ctrl = tk.Frame(parent, bg=BG)
         ctrl.pack(pady=(12, 0))
@@ -427,11 +440,6 @@ class CodenamesUI:
                      text=f'Hinweis: "{word}"  ({count})',
                      font=("Helvetica Neue", 16, "bold"),
                      fg=self._team_color(active_team), bg=BG).pack(side=tk.LEFT, padx=(0, 24))
-            guesses_text = "∞" if guesses == -1 else str(guesses)
-            tk.Label(ctrl,
-                     text=f"Versuche: {guesses_text}",
-                     font=("Helvetica Neue", 14),
-                     fg=FG_MUTED, bg=BG).pack(side=tk.LEFT, padx=(0, 24))
         else:
             tk.Label(ctrl,
                      text="Warte auf Hinweis…",

@@ -133,7 +133,7 @@ class GameController:
             return {"ok": False, "error": "Dein Team ist nicht an der Reihe."}
         if self.current_hint is None:
             return {"ok": False, "error": "Noch kein Hinweis gegeben."}
-        if self.guesses_remaining <= 0:
+        if self.guesses_remaining == 0:
             return {"ok": False, "error": "Keine Versuche mehr übrig."}
         if word not in self.board:
             return {"ok": False, "error": "Unbekanntes Wort."}
