@@ -32,6 +32,18 @@ def _broadcast(msg: dict):
                 pass
 
 
+def _start_new_round():
+    """Startet eine neue Runde und sendet den neuen Zustand an alle."""
+    global _controller
+    if _controller is None:
+        return
+    _controller.start_new_round()
+    state = _controller.get_state()
+    _broadcast({"type": "state_update", "state": state})
+    if _server_on_state_update:
+        _server_on_state_update(state)
+
+
 def _handle_action(color: str, msg: dict) -> None:
     """Verarbeitet eine Spielaktion (submit_hint / reveal_tile / end_turn)
     und sendet den neuen Zustand an alle Clients und den Server-Spieler."""
@@ -54,6 +66,8 @@ def _handle_action(color: str, msg: dict) -> None:
         _broadcast({"type": "state_update", "state": state})
         if _server_on_state_update:
             _server_on_state_update(state)
+        if state.get("round_over"):
+            threading.Timer(5.0, _start_new_round).start()
 
 
 def _client_thread(conn: socket.socket, role: str, color: str):

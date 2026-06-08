@@ -10,6 +10,12 @@ RED_CLR    = "#e63946"
 BLUE_CLR   = "#457b9d"
 HIDDEN_CLR = "#2e3a47"   # verdeckte Kachel (Agenten-Ansicht)
 BAR_BG     = "#0d1520"   # Hintergrund der Score-Leiste
+DIM_MAP    = {           # aufgedeckte Kacheln in Spymaster-Ansicht
+    "red":   ("#6b1219", "#a06068"),
+    "blue":  ("#1a3a4a", "#5a8aaa"),
+    "white": ("#6a6f76", "#9a9ea5"),
+    "black": ("#111115", "#555555"),
+}
 
 
 class CodenamesUI:
@@ -165,25 +171,31 @@ class CodenamesUI:
     def _build_game_ui(self, state: dict):
         self._clear()
 
-        active_team = state["active_team"]
-        hint        = state["current_hint"]
-        guesses     = state["guesses_remaining"]
+        active_team  = state["active_team"]
+        hint         = state["current_hint"]
+        guesses      = state["guesses_remaining"]
+        revealed_set = set(state.get("revealed", []))
+        round_over   = state.get("round_over", False)
 
         is_agent        = self.role and self.role.lower() == "agent"
         is_instructor   = self.role and self.role.lower() == "instructor"
         is_active_agent = (is_agent and
                            self.color and
                            self.color.lower() == active_team.lower() and
-                           not state["round_over"])
+                           not round_over)
         can_guess       = is_active_agent and hint is not None and guesses > 0
         is_active_instructor = (
             is_instructor and
             self.color and self.color.lower() == active_team.lower() and
-            hint is None and not state["round_over"]
+            hint is None and not round_over
         )
 
         # ── score bar ──────────────────────────────────────────────────────
         self._build_score_bar(state, active_team)
+
+        # ── round over banner ──────────────────────────────────────────────
+        if round_over:
+            self._build_round_over_banner(state)
 
         # ── calculate tile size from available window space ─────────────────
         self.root.update_idletasks()
@@ -253,7 +265,15 @@ class CodenamesUI:
                 cell.grid(row=i, column=j, padx=tile_pad, pady=tile_pad)
                 cell.pack_propagate(False)
 
-                if can_guess and is_unrevealed:
+                if is_instructor and word in revealed_set:
+                    dim_bg, dim_fg = DIM_MAP.get(col, (bg, FG_MUTED))
+                    tk.Label(
+                        cell, text=f"{word}  ✓",
+                        font=("Helvetica Neue", font_sz, "bold"),
+                        bg=dim_bg, fg=dim_fg, relief="flat",
+                        wraplength=tile_px - 10,
+                    ).pack(fill=tk.BOTH, expand=True)
+                elif can_guess and is_unrevealed:
                     tk.Button(
                         cell, text=word,
                         font=("Helvetica Neue", font_sz, "bold"),
@@ -283,6 +303,28 @@ class CodenamesUI:
             self._build_instructor_panel(panel_frame, is_active_instructor)
 
     # ── sub-builders ───────────────────────────────────────────────────────
+
+    def _build_round_over_banner(self, state: dict):
+        winner    = state.get("winner", "")
+        reason    = state.get("end_reason", "")
+        team_clr  = self._team_color(winner) if winner else FG_MUTED
+        team_name = "Rot" if winner and winner.lower() == "red" else "Blau"
+
+        if reason == "assassin":
+            detail = "Die schwarze Karte wurde aufgedeckt!"
+        else:
+            detail = "Alle eigenen Karten gefunden!"
+
+        banner = tk.Frame(self.root, bg=team_clr, pady=10)
+        banner.pack(fill=tk.X)
+        tk.Label(banner,
+                 text=f"Team {team_name} gewinnt die Runde!  —  {detail}",
+                 font=("Helvetica Neue", 15, "bold"),
+                 fg=FG_LIGHT, bg=team_clr).pack()
+        tk.Label(banner,
+                 text="Neue Runde startet in 5 Sekunden…",
+                 font=("Helvetica Neue", 11),
+                 fg=FG_LIGHT, bg=team_clr).pack()
 
     def _build_score_bar(self, state: dict, active_team: str):
         bar = tk.Frame(self.root, bg=BAR_BG, pady=10)
