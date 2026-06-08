@@ -17,23 +17,28 @@ DIM_MAP    = {           # aufgedeckte Kacheln in Spymaster-Ansicht
     "black": ("#111115", "#555555"),
 }
 
-_nlp = None
+_tagger = None
 
-def _get_nlp():
-    global _nlp
-    if _nlp is None:
+def _get_tagger():
+    global _tagger
+    if _tagger is None:
         try:
-            import spacy
-            _nlp = spacy.load("de_core_news_sm")
-        except OSError:
-            print("[spaCy] Modell 'de_core_news_sm' fehlt – "
-                  "bitte ausführen: python -m spacy download de_core_news_sm")
+            from HanTa import HanoverTagger as ht
+            _tagger = ht.HanoverTagger('morphmodel_ger.pgz')
         except ImportError:
-            print("[spaCy] nicht installiert – bitte ausführen: pip install spacy")
-    return _nlp
+            print("[HanTa] nicht installiert – bitte: pip install HanTa")
+        except Exception as e:
+            print(f"[HanTa] Fehler beim Laden: {e}")
+    return _tagger
 
 def _normalize(w: str) -> str:
-    return re.sub(r'[^a-zäöü]', '', w.lower())
+    """Lowercase + keep only German letters (including umlauts)."""
+    return re.sub(r'[^a-zäöüß]', '', w.lower())
+
+def _flatten(w: str) -> str:
+    """Like _normalize but also converts umlauts to base vowels for fuzzy compound matching."""
+    s = _normalize(w)
+    return s.replace('ä', 'a').replace('ö', 'o').replace('ü', 'u').replace('ß', 'ss')
 
 
 class CodenamesUI:
@@ -53,7 +58,6 @@ class CodenamesUI:
         self.on_submit_hint:  callable | None = None   # fn(word, count)
 
         self._grid_words: list[str] = []
-        self._grid_lemmas: dict[str, str] = {}   # normalized_word -> normalized_lemma
         self._current_state: dict | None = None
         self._resize_after = None
 
@@ -86,53 +90,48 @@ class CodenamesUI:
             return False, "Hinweis darf nicht leer sein"
 
         hint_words = hint.split()
-        nlp        = _get_nlp()
-        norm_grid  = [_normalize(w) for w in grid_words]
+        tagger     = _get_tagger()
 
         for word in hint_words:
-            norm_word = _normalize(word)
-
-            # ── POS check via spaCy ─────────────────────────────────────────
-            if nlp:
-                token = nlp(word)[0]
-                if token.pos_ not in ("NOUN", "PROPN"):
-                    return False, f"'{word}' ist kein deutsches Substantiv"
-                norm_lemma = _normalize(token.lemma_)
+            # ── POS-Prüfung via HanTa ───────────────────────────────────────
+            if tagger:
+                try:
+                    _, pos, _ = tagger.tag_sent([word])[0]
+                    # STTS-Tags für Substantive: NN (Nomen), NE (Eigenname)
+                    if pos not in ("NN", "NE"):
+                        return False, f"'{word}' ist kein deutsches Substantiv"
+                except Exception:
+                    # HanTa-Fehler → Großschreibungs-Fallback
+                    if not word[0].isupper():
+                        return False, "Alle Wörter müssen mit Großbuchstaben beginnen"
             else:
-                # Fallback wenn spaCy nicht verfügbar
                 if not word[0].isupper():
-                    return False, "Alle Wörter müssen mit Großbuchstaben beginnen (Substantive)"
-                norm_lemma = norm_word
+                    return False, "Alle Wörter müssen mit Großbuchstaben beginnen"
 
-            # Both surface form and lemma of the hint are checked
-            hint_forms = {norm_word, norm_lemma}
+            # ── Spielfeld-Abgleich (Oberfläche + Umlaut-geglättet) ──────────
+            norm_hint = _normalize(word)
+            flat_hint = _flatten(word)
 
-            for i, gw_norm in enumerate(norm_grid):
-                # Grid word: surface form + cached lemma (catches e.g. "Haus" vs "Häuser")
-                gw_lemma   = self._grid_lemmas.get(gw_norm, gw_norm)
-                gw_forms   = {gw_norm, gw_lemma}
-                orig_gw    = grid_words[i]
+            for gw in grid_words:
+                norm_gw = _normalize(gw)
+                flat_gw = _flatten(gw)
 
-                # Exact match
-                if hint_forms & gw_forms:
+                # Exakter Treffer
+                if norm_hint == norm_gw:
                     return False, f"'{word}' ist ein Wort aus dem Spielfeld!"
 
-                # Compound check: grid word (or its lemma) contained in hint
-                # e.g. "Tier" in "Tierarzt", or "Haus" (lemma of "Häuser") in "Haustür"
-                for h in hint_forms:
-                    for g in gw_forms:
+                # Kompositum-Prüfung: Spielfeldwort steckt im Hinweis
+                # (prüft auch Umlaut-Varianten, z. B. "Haus" in "Häuser" → "haus" in "hauser")
+                for h in (norm_hint, flat_hint):
+                    for g in (norm_gw, flat_gw):
                         if g and g in h:
-                            return False, (
-                                f"'{word}' enthält das Spielfeldwort '{orig_gw}'"
-                            )
+                            return False, f"'{word}' enthält das Spielfeldwort '{gw}'"
 
-                # Vice-versa: hint contained inside a grid word
-                for h in hint_forms:
-                    for g in gw_forms:
+                # Hinweis steckt im Spielfeldwort
+                for h in (norm_hint, flat_hint):
+                    for g in (norm_gw, flat_gw):
                         if h and h in g:
-                            return False, (
-                                f"'{word}' ist Teil des Spielfeldworts '{orig_gw}'"
-                            )
+                            return False, f"'{word}' ist Teil des Spielfeldworts '{gw}'"
 
         return True, ""
 
@@ -216,19 +215,7 @@ class CodenamesUI:
 
     def show_game_from_state(self, state: dict):
         self._current_state = state
-        self._compute_grid_lemmas(state)
         self._build_game_ui(state)
-
-    def _compute_grid_lemmas(self, state: dict):
-        """Pre-compute lemmas for all grid words for compound detection."""
-        words = list(state.get("board_full", {}).keys())
-        nlp   = _get_nlp()
-        if not nlp or not words:
-            return
-        self._grid_lemmas = {
-            _normalize(word): _normalize(doc[0].lemma_)
-            for word, doc in zip(words, nlp.pipe(words))
-        }
 
     def _build_game_ui(self, state: dict):
         self._clear()
@@ -438,11 +425,16 @@ class CodenamesUI:
                      font=("Helvetica Neue", 14), fg=FG_MUTED, bg=BG).pack(side=tk.LEFT, padx=(0, 24))
 
         if can_guess:
+            _, hint_count  = hint
+            tile_clicked   = guesses < hint_count + 1
+            btn_bg         = FG_MUTED if tile_clicked else HIDDEN_CLR
             tk.Button(ctrl, text="Zug beenden",
                       font=("Helvetica Neue", 12, "bold"),
-                      fg=FG_LIGHT, bg=FG_MUTED,
+                      fg=FG_LIGHT, bg=btn_bg,
                       activeforeground=FG_LIGHT, activebackground=FG_MUTED,
-                      relief="flat", padx=16, pady=6, cursor="hand2",
+                      relief="flat", padx=16, pady=6,
+                      cursor="hand2" if tile_clicked else "arrow",
+                      state=tk.NORMAL if tile_clicked else tk.DISABLED,
                       command=self._end_turn_clicked).pack(side=tk.LEFT)
 
     def _build_instructor_panel(self, parent, is_active: bool):
@@ -466,9 +458,11 @@ class CodenamesUI:
         tk.Label(panel, text="Anzahl:",
                  font=("Helvetica Neue", 12), fg=FG_LIGHT, bg=BG).pack(anchor=tk.W, pady=(0, 4))
         number_var   = tk.StringVar()
+        only_digits  = (self.root.register(lambda P: P == "" or P.isdigit()), "%P")
         number_input = tk.Entry(panel, textvariable=number_var,
                                 font=("Helvetica Neue", 12), width=20,
                                 bg="#1c2333", fg=FG_LIGHT, insertbackground=FG_LIGHT,
+                                validate="key", validatecommand=only_digits,
                                 state=tk.NORMAL if is_active else tk.DISABLED)
         number_input.pack(anchor=tk.W, pady=(0, 16))
 
