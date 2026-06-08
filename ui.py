@@ -29,6 +29,10 @@ class CodenamesUI:
         self.on_submit_hint:  callable | None = None   # fn(word, count)
 
         self._grid_words: list[str] = []
+        self._current_state: dict | None = None
+        self._resize_after = None
+
+        self.root.bind('<Configure>', self._on_configure)
 
         if role and color:
             self.show_role(role, color)
@@ -109,6 +113,14 @@ class CodenamesUI:
         if self.on_end_turn:
             self.on_end_turn()
 
+    def _on_configure(self, event):
+        if event.widget is self.root and self._current_state is not None:
+            if self._resize_after is not None:
+                self.root.after_cancel(self._resize_after)
+            self._resize_after = self.root.after(
+                120, lambda: self._build_game_ui(self._current_state)
+            )
+
     # ── screens ────────────────────────────────────────────────────────────
 
     def _show_waiting(self):
@@ -147,43 +159,63 @@ class CodenamesUI:
                  font=("Helvetica Neue", 14), fg=FG_MUTED, bg=BG).pack()
 
     def show_game_from_state(self, state: dict):
-        """
-        Rendert das komplette Spielfeld aus dem Server-Zustand.
+        self._current_state = state
+        self._build_game_ui(state)
 
-        Instruktoren: alle Kachelfarben sichtbar + Hinweis-Formular.
-        Agenten:      nur aufgedeckte Farben; eigene Kacheln anklickbar wenn dran.
-
-        UI-Anbindung:
-          - Wird automatisch via on_game_start ausgelöst (kein manueller Aufruf).
-          - Bei jedem State-Update (reveal_tile, end_turn …) erneut aufrufen.
-          - Callbacks vor dem ersten Aufruf setzen:
-              ui.on_tile_click  = lambda word: …
-              ui.on_end_turn    = lambda: …
-              ui.on_submit_hint = lambda word, count: …
-        """
+    def _build_game_ui(self, state: dict):
         self._clear()
 
-        active_team = state["active_team"]        # "Red" | "Blue"
-        hint        = state["current_hint"]        # (word, count) | None
+        active_team = state["active_team"]
+        hint        = state["current_hint"]
         guesses     = state["guesses_remaining"]
 
         is_agent        = self.role and self.role.lower() == "agent"
+        is_instructor   = self.role and self.role.lower() == "instructor"
         is_active_agent = (is_agent and
                            self.color and
                            self.color.lower() == active_team.lower() and
                            not state["round_over"])
         can_guess       = is_active_agent and hint is not None and guesses > 0
+        is_active_instructor = (
+            is_instructor and
+            self.color and self.color.lower() == active_team.lower() and
+            hint is None and not state["round_over"]
+        )
 
         # ── score bar ──────────────────────────────────────────────────────
         self._build_score_bar(state, active_team)
 
+        # ── calculate tile size from available window space ─────────────────
+        self.root.update_idletasks()
+        win_w = self.root.winfo_width()
+        win_h = self.root.winfo_height()
+        if win_w < 100:   # window not yet measured (first paint)
+            win_w = self.root.winfo_screenwidth()
+            win_h = self.root.winfo_screenheight()
+
+        bar_h      = 54
+        ctrl_h     = 60 if is_agent else 0
+        panel_w    = 280 if is_instructor else 0
+        gap        = 48 if is_instructor else 0
+        h_padding  = 48
+        v_padding  = 40
+
+        avail_w = win_w - panel_w - gap - h_padding
+        avail_h = win_h - bar_h - ctrl_h - v_padding
+
+        tile_px  = max(80, min(avail_w // 5, avail_h // 5))
+        tile_pad = max(4, tile_px // 22)
+        font_sz  = max(9, tile_px // 8)
+
         # ── main area ──────────────────────────────────────────────────────
         main = tk.Frame(self.root, bg=BG)
-        main.pack(fill=tk.BOTH, expand=True, padx=24, pady=16)
+        main.pack(fill=tk.BOTH, expand=True)
 
-        # grid side (left)
-        grid_side = tk.Frame(main, bg=BG)
-        grid_side.pack(side=tk.LEFT, anchor=tk.N)
+        content = tk.Frame(main, bg=BG)
+        content.place(relx=0.5, rely=0.5, anchor="center")
+
+        grid_side = tk.Frame(content, bg=BG)
+        grid_side.pack(side=tk.LEFT)
 
         # colored border when this player is the active agent
         border_clr = self._team_color(self.color) if is_active_agent else BG
@@ -194,11 +226,7 @@ class CodenamesUI:
         grid_inner.pack()
 
         # choose board data
-        if self.role and self.role.lower() == "instructor":
-            board = state["board_full"]
-        else:
-            board = state["board_agents"]
-
+        board = state["board_full"] if is_instructor else state["board_agents"]
         self._grid_words = list(board.keys())
 
         color_map = {
@@ -214,44 +242,45 @@ class CodenamesUI:
 
         for i in range(5):
             for j in range(5):
-                idx   = i * 5 + j
-                word  = words[idx]
-                col   = colors[idx]
-                bg, fg = color_map.get(col, color_map[None])
-                is_unrevealed = col is None   # only possible in board_agents
+                idx          = i * 5 + j
+                word         = words[idx]
+                col          = colors[idx]
+                bg, fg       = color_map.get(col, color_map[None])
+                is_unrevealed = col is None
+
+                # pixel-sized container so tiles scale with the window
+                cell = tk.Frame(grid_inner, width=tile_px, height=tile_px, bg=bg)
+                cell.grid(row=i, column=j, padx=tile_pad, pady=tile_pad)
+                cell.pack_propagate(False)
 
                 if can_guess and is_unrevealed:
-                    # clickable button for the active agent
                     tk.Button(
-                        grid_inner, text=word,
-                        font=("Helvetica Neue", 13, "bold"),
-                        width=14, height=4,
+                        cell, text=word,
+                        font=("Helvetica Neue", font_sz, "bold"),
                         bg=HIDDEN_CLR, fg=FG_LIGHT,
                         activebackground="#3d5166",
                         activeforeground=FG_LIGHT,
                         relief="flat", cursor="hand2",
+                        wraplength=tile_px - 10,
                         command=lambda w=word: self._tile_clicked(w),
-                    ).grid(row=i, column=j, padx=5, pady=5)
+                    ).pack(fill=tk.BOTH, expand=True)
                 else:
                     tk.Label(
-                        grid_inner, text=word,
-                        font=("Helvetica Neue", 13, "bold"),
-                        width=14, height=4,
+                        cell, text=word,
+                        font=("Helvetica Neue", font_sz, "bold"),
                         bg=bg, fg=fg, relief="flat",
-                    ).grid(row=i, column=j, padx=5, pady=5)
+                        wraplength=tile_px - 10,
+                    ).pack(fill=tk.BOTH, expand=True)
 
         # hint display + "Zug beenden" below grid (agents only)
         if is_agent:
             self._build_agent_controls(grid_side, state, active_team, can_guess)
 
         # instructor hint form (right panel)
-        is_active_instructor = (
-            self.role and self.role.lower() == "instructor" and
-            self.color and self.color.lower() == active_team.lower() and
-            hint is None and not state["round_over"]
-        )
-        if self.role and self.role.lower() == "instructor":
-            self._build_instructor_panel(main, is_active_instructor)
+        if is_instructor:
+            panel_frame = tk.Frame(content, bg=BG)
+            panel_frame.pack(side=tk.LEFT, anchor=tk.N, padx=(40, 0))
+            self._build_instructor_panel(panel_frame, is_active_instructor)
 
     # ── sub-builders ───────────────────────────────────────────────────────
 
@@ -312,8 +341,7 @@ class CodenamesUI:
                       command=self._end_turn_clicked).pack(side=tk.LEFT)
 
     def _build_instructor_panel(self, parent, is_active: bool):
-        panel = tk.Frame(parent, bg=BG)
-        panel.pack(side=tk.RIGHT, anchor=tk.N, padx=(40, 0))
+        panel = parent
 
         tk.Label(panel, text="Hinweis geben",
                  font=("Helvetica Neue", 18, "bold"),
