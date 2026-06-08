@@ -90,43 +90,56 @@ class CodenamesUI:
             return False, "Hinweis darf nicht leer sein"
 
         hint_words = hint.split()
-        nlp        = _get_nlp()
-        norm_grid  = [_normalize(w) for w in grid_words]
+        tagger     = _get_tagger()
+        _vowels    = set('aeiouäöüAEIOUÄÖÜ')
 
         for word in hint_words:
-            norm_word = _normalize(word)
+            # ── Basis-Plausibilitätsprüfung ────────────────────────────────
+            if not re.match(r'^[a-zA-ZäöüÄÖÜß]+$', word):
+                return False, f"'{word}' enthält ungültige Zeichen"
+            if len(word) < 2:
+                return False, f"'{word}' ist zu kurz"
+            if not any(c in _vowels for c in word):
+                return False, f"'{word}' enthält keine Vokale"
+            if sum(1 for c in word if c in _vowels) / len(word) < 0.10:
+                return False, f"'{word}' sieht nicht wie ein deutsches Wort aus"
+            if re.search(r'(.)\1{3,}', word, re.IGNORECASE):
+                return False, f"'{word}' enthält zu viele gleiche Zeichen"
 
-            # ── POS check via spaCy ─────────────────────────────────────────
-            if nlp:
-                token = nlp(word)[0]
-                if token.pos_ not in ("NOUN", "PROPN"):
-                    return False, f"'{word}' ist kein deutsches Substantiv"
-                norm_lemma = _normalize(token.lemma_)
+            # ── POS-Check via HanTa ────────────────────────────────────────
+            norm_lemma = _normalize(word)
+            if tagger:
+                try:
+                    result = tagger.tag_word(word, taglevel=1)
+                    if result:
+                        norm_lemma = _normalize(result[0][1])
+                        pos        = result[0][2]
+                        if pos not in ("NN", "NE"):
+                            return False, f"'{word}' ist kein deutsches Substantiv"
+                except Exception:
+                    pass
             else:
                 if not word[0].isupper():
                     return False, "Alle Wörter müssen mit Großbuchstaben beginnen"
 
-            # ── Spielfeld-Abgleich (Oberfläche + Umlaut-geglättet) ──────────
-            norm_hint = _normalize(word)
-            flat_hint = _flatten(word)
+            # ── Spielfeld-Abgleich (Oberfläche + Lemma + Umlaut-geglättet) ──
+            norm_hint  = _normalize(word)
+            flat_hint  = _flatten(word)
+            flat_lemma = _flatten(norm_lemma)
 
             for gw in grid_words:
                 norm_gw = _normalize(gw)
                 flat_gw = _flatten(gw)
 
-                # Exakter Treffer
-                if norm_hint == norm_gw:
+                if norm_hint == norm_gw or norm_lemma == norm_gw:
                     return False, f"'{word}' ist ein Wort aus dem Spielfeld!"
 
-                # Kompositum-Prüfung: Spielfeldwort steckt im Hinweis
-                # (prüft auch Umlaut-Varianten, z. B. "Haus" in "Häuser" → "haus" in "hauser")
-                for h in (norm_hint, flat_hint):
+                for h in (norm_hint, flat_hint, norm_lemma, flat_lemma):
                     for g in (norm_gw, flat_gw):
                         if g and g in h:
                             return False, f"'{word}' enthält das Spielfeldwort '{gw}'"
 
-                # Hinweis steckt im Spielfeldwort
-                for h in (norm_hint, flat_hint):
+                for h in (norm_hint, flat_hint, norm_lemma, flat_lemma):
                     for g in (norm_gw, flat_gw):
                         if h and h in g:
                             return False, f"'{word}' ist Teil des Spielfeldworts '{gw}'"
