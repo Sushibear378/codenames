@@ -11,6 +11,24 @@ BLUE_CLR   = "#457b9d"
 HIDDEN_CLR = "#2e3a47"   # verdeckte Kachel (Agenten-Ansicht)
 BAR_BG     = "#0d1520"   # Hintergrund der Score-Leiste
 
+_nlp = None
+
+def _get_nlp():
+    global _nlp
+    if _nlp is None:
+        try:
+            import spacy
+            _nlp = spacy.load("de_core_news_sm")
+        except OSError:
+            print("[spaCy] Modell 'de_core_news_sm' fehlt – "
+                  "bitte ausführen: python -m spacy download de_core_news_sm")
+        except ImportError:
+            print("[spaCy] nicht installiert – bitte ausführen: pip install spacy")
+    return _nlp
+
+def _normalize(w: str) -> str:
+    return re.sub(r'[^a-zäöü]', '', w.lower())
+
 
 class CodenamesUI:
     def __init__(self, role: str = None, color: str = None):
@@ -29,6 +47,7 @@ class CodenamesUI:
         self.on_submit_hint:  callable | None = None   # fn(word, count)
 
         self._grid_words: list[str] = []
+        self._grid_lemmas: dict[str, str] = {}   # normalized_word -> normalized_lemma
         self._current_state: dict | None = None
         self._resize_after = None
 
@@ -61,23 +80,54 @@ class CodenamesUI:
             return False, "Hinweis darf nicht leer sein"
 
         hint_words = hint.split()
+        nlp        = _get_nlp()
+        norm_grid  = [_normalize(w) for w in grid_words]
+
         for word in hint_words:
-            if not word[0].isupper():
-                return False, "Alle Wörter müssen mit Großbuchstaben beginnen (Substantive)"
+            norm_word = _normalize(word)
 
-        def normalize(w):
-            return re.sub(r'[^a-zäöü]', '', w.lower())
+            # ── POS check via spaCy ─────────────────────────────────────────
+            if nlp:
+                token = nlp(word)[0]
+                if token.pos_ not in ("NOUN", "PROPN"):
+                    return False, f"'{word}' ist kein deutsches Substantiv"
+                norm_lemma = _normalize(token.lemma_)
+            else:
+                # Fallback wenn spaCy nicht verfügbar
+                if not word[0].isupper():
+                    return False, "Alle Wörter müssen mit Großbuchstaben beginnen (Substantive)"
+                norm_lemma = norm_word
 
-        norm_grid  = [normalize(w) for w in grid_words]
-        norm_hints = [normalize(w) for w in hint_words]
+            # Both surface form and lemma of the hint are checked
+            hint_forms = {norm_word, norm_lemma}
 
-        for hw in norm_hints:
-            if hw in norm_grid:
-                return False, f"'{hw}' ist ein Wort aus dem Spielfeld!"
-        for hw in norm_hints:
-            for gw in norm_grid:
-                if gw in hw or hw in gw:
-                    return False, f"'{hw}' enthält Teile von Wörtern aus dem Spielfeld"
+            for i, gw_norm in enumerate(norm_grid):
+                # Grid word: surface form + cached lemma (catches e.g. "Haus" vs "Häuser")
+                gw_lemma   = self._grid_lemmas.get(gw_norm, gw_norm)
+                gw_forms   = {gw_norm, gw_lemma}
+                orig_gw    = grid_words[i]
+
+                # Exact match
+                if hint_forms & gw_forms:
+                    return False, f"'{word}' ist ein Wort aus dem Spielfeld!"
+
+                # Compound check: grid word (or its lemma) contained in hint
+                # e.g. "Tier" in "Tierarzt", or "Haus" (lemma of "Häuser") in "Haustür"
+                for h in hint_forms:
+                    for g in gw_forms:
+                        if g and g in h:
+                            return False, (
+                                f"'{word}' enthält das Spielfeldwort '{orig_gw}'"
+                            )
+
+                # Vice-versa: hint contained inside a grid word
+                for h in hint_forms:
+                    for g in gw_forms:
+                        if h and h in g:
+                            return False, (
+                                f"'{word}' ist Teil des Spielfeldworts '{orig_gw}'"
+                            )
+
         return True, ""
 
     def _send_hint(self, number_var, text_var, number_input, text_input):
@@ -160,7 +210,19 @@ class CodenamesUI:
 
     def show_game_from_state(self, state: dict):
         self._current_state = state
+        self._compute_grid_lemmas(state)
         self._build_game_ui(state)
+
+    def _compute_grid_lemmas(self, state: dict):
+        """Pre-compute lemmas for all grid words for compound detection."""
+        words = list(state.get("board_full", {}).keys())
+        nlp   = _get_nlp()
+        if not nlp or not words:
+            return
+        self._grid_lemmas = {
+            _normalize(word): _normalize(doc[0].lemma_)
+            for word, doc in zip(words, nlp.pipe(words))
+        }
 
     def _build_game_ui(self, state: dict):
         self._clear()
@@ -203,9 +265,9 @@ class CodenamesUI:
         avail_w = win_w - panel_w - gap - h_padding
         avail_h = win_h - bar_h - ctrl_h - v_padding
 
-        tile_px  = max(80, min(avail_w // 5, avail_h // 5))
-        tile_pad = max(4, tile_px // 22)
-        font_sz  = max(9, tile_px // 8)
+        tile_px  = max(60, int(min(avail_w // 5, avail_h // 5) * 0.75))
+        tile_pad = max(3, tile_px // 22)
+        font_sz  = max(8, tile_px // 8)
 
         # ── main area ──────────────────────────────────────────────────────
         main = tk.Frame(self.root, bg=BG)
@@ -347,14 +409,7 @@ class CodenamesUI:
                  font=("Helvetica Neue", 18, "bold"),
                  fg=FG_LIGHT, bg=BG).pack(pady=(0, 16))
 
-        tk.Label(panel, text="Anzahl:",
-                 font=("Helvetica Neue", 12), fg=FG_LIGHT, bg=BG).pack(anchor=tk.W, pady=(0, 4))
-        number_var   = tk.StringVar()
-        number_input = tk.Entry(panel, textvariable=number_var,
-                                font=("Helvetica Neue", 12), width=20,
-                                bg="#1c2333", fg=FG_LIGHT, insertbackground=FG_LIGHT,
-                                state=tk.NORMAL if is_active else tk.DISABLED)
-        number_input.pack(anchor=tk.W, pady=(0, 16))
+        
 
         tk.Label(panel, text="Hinweis (Substantive):",
                  font=("Helvetica Neue", 12), fg=FG_LIGHT, bg=BG).pack(anchor=tk.W, pady=(0, 4))
@@ -364,6 +419,15 @@ class CodenamesUI:
                               bg="#1c2333", fg=FG_LIGHT, insertbackground=FG_LIGHT,
                               state=tk.NORMAL if is_active else tk.DISABLED)
         text_input.pack(anchor=tk.W, pady=(0, 16))
+
+        tk.Label(panel, text="Anzahl:",
+                 font=("Helvetica Neue", 12), fg=FG_LIGHT, bg=BG).pack(anchor=tk.W, pady=(0, 4))
+        number_var   = tk.StringVar()
+        number_input = tk.Entry(panel, textvariable=number_var,
+                                font=("Helvetica Neue", 12), width=20,
+                                bg="#1c2333", fg=FG_LIGHT, insertbackground=FG_LIGHT,
+                                state=tk.NORMAL if is_active else tk.DISABLED)
+        number_input.pack(anchor=tk.W, pady=(0, 16))
 
         team_clr = self._team_color(self.color) if self.color else FG_MUTED
         tk.Button(panel, text="Hinweis senden",
