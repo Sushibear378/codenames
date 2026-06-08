@@ -90,20 +90,18 @@ class CodenamesUI:
             return False, "Hinweis darf nicht leer sein"
 
         hint_words = hint.split()
-        tagger     = _get_tagger()
+        nlp        = _get_nlp()
+        norm_grid  = [_normalize(w) for w in grid_words]
 
         for word in hint_words:
-            # ── POS-Prüfung via HanTa ───────────────────────────────────────
-            if tagger:
-                try:
-                    _, pos, _ = tagger.tag_sent([word])[0]
-                    # STTS-Tags für Substantive: NN (Nomen), NE (Eigenname)
-                    if pos not in ("NN", "NE"):
-                        return False, f"'{word}' ist kein deutsches Substantiv"
-                except Exception:
-                    # HanTa-Fehler → Großschreibungs-Fallback
-                    if not word[0].isupper():
-                        return False, "Alle Wörter müssen mit Großbuchstaben beginnen"
+            norm_word = _normalize(word)
+
+            # ── POS check via spaCy ─────────────────────────────────────────
+            if nlp:
+                token = nlp(word)[0]
+                if token.pos_ not in ("NOUN", "PROPN"):
+                    return False, f"'{word}' ist kein deutsches Substantiv"
+                norm_lemma = _normalize(token.lemma_)
             else:
                 if not word[0].isupper():
                     return False, "Alle Wörter müssen mit Großbuchstaben beginnen"
@@ -402,8 +400,7 @@ class CodenamesUI:
                      fg=label_fg, bg=BAR_BG).pack(side=tk.LEFT, padx=6)
 
     def _build_agent_controls(self, parent, state: dict, active_team: str, can_guess: bool):
-        hint    = state["current_hint"]
-        guesses = state["guesses_remaining"]
+        hint = state["current_hint"]
 
         ctrl = tk.Frame(parent, bg=BG)
         ctrl.pack(pady=(12, 0))
@@ -414,11 +411,6 @@ class CodenamesUI:
                      text=f'Hinweis: "{word}"  ({count})',
                      font=("Helvetica Neue", 16, "bold"),
                      fg=self._team_color(active_team), bg=BG).pack(side=tk.LEFT, padx=(0, 24))
-            guesses_text = "∞" if guesses == -1 else str(guesses)
-            tk.Label(ctrl,
-                     text=f"Versuche: {guesses_text}",
-                     font=("Helvetica Neue", 14),
-                     fg=FG_MUTED, bg=BG).pack(side=tk.LEFT, padx=(0, 24))
         else:
             tk.Label(ctrl,
                      text="Warte auf Hinweis…",
