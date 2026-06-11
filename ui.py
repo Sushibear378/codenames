@@ -53,10 +53,11 @@ def _get_stem(w: str) -> str:
                 w = w[len(pref):]
                 break
                 
-    suffixes = ['en', 'er', 'ung', 'heit', 'keit', 'schaft', 'tum', 'lein', 'chen', 
-                'lich', 'isch', 'bar', 'sam', 'haft', 'ig', 'al', 'ial', 'ie', 'ik', 
-                'ion', 'itat', 'ismus', 'ist', 'or', 'ur', 'ant', 'ent', 'anz', 'enz', 
-                'e', 's', 'es', 'n', 't', 'st', 'nd', 'nis']
+    suffixes = ['innen', 'ium', 'ung', 'heit', 'keit', 'schaft', 'lein', 'chen', 
+                'lich', 'isch', 'haft', 'itat', 'ismus', 'enz', 'anz', 'nis',
+                'ent', 'ant', 'ist', 'ial', 'sam', 'bar', 'tum',
+                'en', 'er', 'ig', 'al', 'ie', 'ik', 'ion', 'or', 'ur', 'in', 'um',
+                'es', 'st', 'nd', 'e', 's', 'n', 't']
     
     suffixes.sort(key=len, reverse=True)
     
@@ -183,6 +184,11 @@ class CodenamesUI:
                 if hint_stem and gw_stem:
                     if hint_stem == gw_stem or hint_stem in gw_stem or gw_stem in hint_stem:
                         return False, f"'{word}' gehört zur selben Wortfamilie wie '{gw}'"
+                    
+                    hint_cons = re.sub(r'[aeiou]', '', hint_stem)
+                    gw_cons = re.sub(r'[aeiou]', '', gw_stem)
+                    if hint_cons == gw_cons and len(hint_cons) >= 3:
+                        return False, f"'{word}' ähnelt '{gw}' zu stark (gleiche Konsonanten)"
 
         return True, ""
 
