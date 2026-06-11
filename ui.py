@@ -40,6 +40,35 @@ def _flatten(w: str) -> str:
     s = _normalize(w)
     return s.replace('ä', 'a').replace('ö', 'o').replace('ü', 'u').replace('ß', 'ss')
 
+def _get_stem(w: str) -> str:
+    """Entfernt gängige deutsche Präfixe und Suffixe für einen groben Wortfamilien-Abgleich."""
+    w = _flatten(w)
+    
+    prefixes = ['ge', 'be', 'ver', 'zer', 'ent', 'emp', 'er', 'ur', 'miss', 
+                'auf', 'ab', 'an', 'zu', 'ein', 'aus', 'vor', 'nach', 'mit', 'um', 'durch', 'uber', 'unter']
+    
+    for _ in range(2):
+        for pref in prefixes:
+            if w.startswith(pref) and len(w) > len(pref) + 2:
+                w = w[len(pref):]
+                break
+                
+    suffixes = ['en', 'er', 'ung', 'heit', 'keit', 'schaft', 'tum', 'lein', 'chen', 
+                'lich', 'isch', 'bar', 'sam', 'haft', 'ig', 'al', 'ial', 'ie', 'ik', 
+                'ion', 'itat', 'ismus', 'ist', 'or', 'ur', 'ant', 'ent', 'anz', 'enz', 
+                'e', 's', 'es', 'n', 't', 'st', 'nd', 'nis']
+    
+    suffixes.sort(key=len, reverse=True)
+    
+    for _ in range(2):
+        for suff in suffixes:
+            if w.endswith(suff) and len(w) > len(suff) + 2:
+                w = w[:-len(suff)]
+                break
+                
+    return w
+
+
 
 class CodenamesUI:
     def __init__(self, role: str = None, color: str = None):
@@ -148,6 +177,12 @@ class CodenamesUI:
                     for g in (norm_gw, flat_gw):
                         if h and h in g:
                             return False, f"'{word}' ist Teil des Spielfeldworts '{gw}'"
+
+                hint_stem = _get_stem(word)
+                gw_stem = _get_stem(gw)
+                if hint_stem and gw_stem:
+                    if hint_stem == gw_stem or hint_stem in gw_stem or gw_stem in hint_stem:
+                        return False, f"'{word}' gehört zur selben Wortfamilie wie '{gw}'"
 
         return True, ""
 
