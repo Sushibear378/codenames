@@ -68,6 +68,11 @@ class CodenamesUI:
         else:
             self._show_waiting()
 
+    def update_role(self, role: str):
+        self.role = role
+        if self._current_state is not None:
+            self._build_game_ui(self._current_state)
+
     # ── helpers ────────────────────────────────────────────────────────────
 
     def _clear(self):
