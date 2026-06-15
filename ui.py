@@ -124,6 +124,9 @@ class CodenamesUI:
         if not hint:
             return False, "Hinweis darf nicht leer sein"
 
+        if ' ' in hint:
+            return False, "Hinweis darf nur ein Wort sein"
+
         hint_words = hint.split()
         tagger     = _get_tagger()
         _vowels    = set('aeiouäöüAEIOUÄÖÜ')

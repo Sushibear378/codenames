@@ -432,6 +432,11 @@ class TestIsValidHint(unittest.TestCase):
         ok, _ = self._check("Hundehaus", ["Hund"])
         self.assertFalse(ok)
 
+    def test_multi_word_hint_rejected(self):
+        ok, err = self._check("zwei Wörter")
+        self.assertFalse(ok)
+        self.assertIn("ein Wort", err)
+
     def test_valid_noun_no_grid_conflict(self):
         ok, err = self._check("Tempel", ["Haus", "Auto"])
         # Without HanTa installed, capitalization check applies
