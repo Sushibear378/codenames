@@ -237,22 +237,35 @@ class CodenamesUI:
                 120, lambda: self._build_game_ui(self._current_state)
             )
 
+    def _draw_bg_pattern(self):
+        sw = self.root.winfo_screenwidth()
+        sh = self.root.winfo_screenheight()
+        cv = tk.Canvas(self.root, bg=BG, highlightthickness=0)
+        cv.place(x=0, y=0, relwidth=1, relheight=1)
+        dot_clr = "#131620"
+        for x in range(30, sw + 30, 30):
+            for y in range(30, sh + 30, 30):
+                cv.create_oval(x - 1, y - 1, x + 1, y + 1, fill=dot_clr, outline="")
+        cv.lower()
+
     # ── screens ────────────────────────────────────────────────────────────
 
     def _show_waiting(self):
         self._clear()
+        self._draw_bg_pattern()
         f = self._center_frame()
         tk.Label(f, text="CODENAMES",
-                 font=("Helvetica Neue", 52, "bold"),
+                 font=("Segoe UI", 52, "bold"),
                  fg=FG_LIGHT, bg=BG).pack(pady=(0, 8))
         tk.Frame(f, height=3, width=320, bg=FG_MUTED).pack()
         tk.Label(f, text="Warte auf Spieler…",
-                 font=("Helvetica Neue", 20), fg=FG_MUTED, bg=BG).pack(pady=(32, 0))
+                 font=("Segoe UI", 20), fg=FG_MUTED, bg=BG).pack(pady=(32, 0))
 
     def show_role(self, role: str, color: str):
         self.role  = role
         self.color = color
         self._clear()
+        self._draw_bg_pattern()
 
         team_clr  = self._team_color(color)
         team_name = "Rot"       if color.lower() == "red"        else "Blau"
@@ -260,19 +273,19 @@ class CodenamesUI:
 
         f = self._center_frame()
         tk.Label(f, text="CODENAMES",
-                 font=("Helvetica Neue", 52, "bold"),
+                 font=("Segoe UI", 52, "bold"),
                  fg=FG_LIGHT, bg=BG).pack(pady=(0, 8))
         tk.Frame(f, height=3, width=320, bg=team_clr).pack()
         tk.Label(f, text=f"Team {team_name}",
-                 font=("Helvetica Neue", 18), fg=team_clr, bg=BG).pack(pady=(24, 4))
+                 font=("Segoe UI", 18), fg=team_clr, bg=BG).pack(pady=(24, 4))
         tk.Label(f, text=role_name,
-                 font=("Helvetica Neue", 36, "bold"),
+                 font=("Segoe UI", 36, "bold"),
                  fg=FG_LIGHT, bg=BG).pack(pady=(0, 8))
         tk.Label(f, text="Viel Erfolg!",
-                 font=("Helvetica Neue", 14), fg=FG_MUTED, bg=BG).pack(pady=(0, 24))
+                 font=("Segoe UI", 14), fg=FG_MUTED, bg=BG).pack(pady=(0, 24))
         # Kein "Weiter"-Button – das Spiel startet automatisch wenn alle 4 Spieler da sind
         tk.Label(f, text="Warte auf andere Spieler…",
-                 font=("Helvetica Neue", 14), fg=FG_MUTED, bg=BG).pack()
+                 font=("Segoe UI", 14), fg=FG_MUTED, bg=BG).pack()
 
     def show_game_from_state(self, state: dict):
         self._current_state = state
@@ -280,6 +293,7 @@ class CodenamesUI:
 
     def _build_game_ui(self, state: dict):
         self._clear()
+        self._draw_bg_pattern()
 
         active_team  = state["active_team"]
         hint         = state["current_hint"]
@@ -372,7 +386,10 @@ class CodenamesUI:
                 is_unrevealed = col is None
 
                 # pixel-sized container so tiles scale with the window
-                cell = tk.Frame(grid_inner, width=tile_w, height=tile_h, bg=bg)
+                tile_border = GOLD if col == "black" else "#2a3040"
+                border_w    = 2    if col == "black" else 1
+                cell = tk.Frame(grid_inner, width=tile_w, height=tile_h, bg=bg,
+                                highlightbackground=tile_border, highlightthickness=border_w)
                 cell.grid(row=i, column=j, padx=tile_pad, pady=tile_pad)
                 cell.pack_propagate(False)
 
@@ -380,13 +397,13 @@ class CodenamesUI:
                     dim_bg, dim_fg = DIM_MAP.get(col, (bg, FG_MUTED))
                     tk.Label(
                         cell, text=f"{word}  ✓",
-                        font=("Helvetica Neue", font_sz, "bold"),
+                        font=("Segoe UI", font_sz, "bold"),
                         bg=dim_bg, fg=dim_fg, relief="flat",
                     ).pack(fill=tk.BOTH, expand=True)
                 elif can_guess and is_unrevealed:
                     tk.Button(
                         cell, text=word,
-                        font=("Helvetica Neue", font_sz, "bold"),
+                        font=("Segoe UI", font_sz, "bold"),
                         bg=HIDDEN_CLR, fg=FG_LIGHT,
                         activebackground="#2a3d52",
                         activeforeground=FG_LIGHT,
@@ -396,7 +413,7 @@ class CodenamesUI:
                 else:
                     tk.Label(
                         cell, text=word,
-                        font=("Helvetica Neue", font_sz, "bold"),
+                        font=("Segoe UI", font_sz, "bold"),
                         bg=bg, fg=fg, relief="flat",
                     ).pack(fill=tk.BOTH, expand=True)
 
@@ -427,11 +444,11 @@ class CodenamesUI:
         banner.pack(fill=tk.X)
         tk.Label(banner,
                  text=f"Team {team_name} gewinnt die Runde!  —  {detail}",
-                 font=("Helvetica Neue", 15, "bold"),
+                 font=("Segoe UI", 15, "bold"),
                  fg=FG_LIGHT, bg=team_clr).pack()
         tk.Label(banner,
                  text="Neue Runde startet in 5 Sekunden…",
-                 font=("Helvetica Neue", 11),
+                 font=("Segoe UI", 11),
                  fg=FG_LIGHT, bg=team_clr).pack()
 
     def _build_score_bar(self, state: dict, active_team: str):
@@ -440,7 +457,7 @@ class CodenamesUI:
 
         starting_team = state.get("starting_team", "")
 
-        for i, (team, clr) in enumerate((("Red", RED_CLR), ("Blue", BLUE_CLR))):
+        for team, clr in (("Red", RED_CLR), ("Blue", BLUE_CLR)):
             is_active  = team.lower() == active_team.lower()
             is_starter = team == starting_team
             name       = "ROT" if team == "Red" else "BLAU"
@@ -454,22 +471,18 @@ class CodenamesUI:
             panel.pack(side=tk.LEFT, expand=True)
 
             tk.Label(panel, text=f"{indicator}{name}",
-                     font=("Helvetica Neue", 15, "bold"),
+                     font=("Segoe UI", 15, "bold"),
                      fg=label_fg, bg=BAR_BG).pack(side=tk.LEFT, padx=(12, 6))
             if is_starter:
                 tk.Label(panel, text="angefangen",
-                         font=("Helvetica Neue", 9), fg=clr, bg=BAR_BG).pack(side=tk.LEFT, padx=(0, 6))
+                         font=("Segoe UI", 9), fg=clr, bg=BAR_BG).pack(side=tk.LEFT, padx=(0, 6))
             tk.Label(panel, text=f"Runden: {wins}",
-                     font=("Helvetica Neue", 13),
+                     font=("Segoe UI", 13),
                      fg=label_fg, bg=BAR_BG).pack(side=tk.LEFT, padx=6)
             tk.Label(panel, text=f"Karten: {found}/{total}",
-                     font=("Helvetica Neue", 13),
+                     font=("Segoe UI", 13),
                      fg=label_fg, bg=BAR_BG).pack(side=tk.LEFT, padx=6)
 
-            if i == 0:
-                tk.Label(bar, text="▬ 007 ▬",
-                         font=("Helvetica Neue", 16, "bold"),
-                         fg=GOLD, bg=BAR_BG).pack(side=tk.LEFT, padx=12)
 
     def _build_agent_controls(self, parent, state: dict, active_team: str, can_guess: bool):
         hint    = state["current_hint"]
@@ -482,19 +495,19 @@ class CodenamesUI:
             word, count = hint
             tk.Label(ctrl,
                      text=f'Hinweis: "{word}"  ({count})',
-                     font=("Helvetica Neue", 16, "bold"),
+                     font=("Segoe UI", 16, "bold"),
                      fg=self._team_color(active_team), bg=BG).pack(side=tk.LEFT, padx=(0, 24))
         else:
             tk.Label(ctrl,
                      text="Warte auf Hinweis…",
-                     font=("Helvetica Neue", 14), fg=FG_MUTED, bg=BG).pack(side=tk.LEFT, padx=(0, 24))
+                     font=("Segoe UI", 14), fg=FG_MUTED, bg=BG).pack(side=tk.LEFT, padx=(0, 24))
 
         if can_guess:
             _, hint_count  = hint
             tile_clicked   = guesses < hint_count + 1
             btn_bg         = FG_MUTED if tile_clicked else HIDDEN_CLR
             tk.Button(ctrl, text="Zug beenden",
-                      font=("Helvetica Neue", 12, "bold"),
+                      font=("Segoe UI", 12, "bold"),
                       fg=FG_LIGHT, bg=btn_bg,
                       activeforeground=FG_LIGHT, activebackground=FG_MUTED,
                       relief="flat", padx=16, pady=6,
@@ -506,26 +519,26 @@ class CodenamesUI:
         panel = parent
 
         tk.Label(panel, text="Hinweis geben",
-                 font=("Helvetica Neue", 18, "bold"),
+                 font=("Segoe UI", 18, "bold"),
                  fg=FG_LIGHT, bg=BG).pack(pady=(0, 16))
 
         
 
         tk.Label(panel, text="Hinweis (Substantive):",
-                 font=("Helvetica Neue", 12), fg=FG_LIGHT, bg=BG).pack(anchor=tk.W, pady=(0, 4))
+                 font=("Segoe UI", 12), fg=FG_LIGHT, bg=BG).pack(anchor=tk.W, pady=(0, 4))
         text_var   = tk.StringVar()
         text_input = tk.Entry(panel, textvariable=text_var,
-                              font=("Helvetica Neue", 12), width=20,
+                              font=("Segoe UI", 12), width=20,
                               bg="#0f1420", fg=FG_LIGHT, insertbackground=FG_LIGHT,
                               state=tk.NORMAL if is_active else tk.DISABLED)
         text_input.pack(anchor=tk.W, pady=(0, 16))
 
         tk.Label(panel, text="Anzahl:",
-                 font=("Helvetica Neue", 12), fg=FG_LIGHT, bg=BG).pack(anchor=tk.W, pady=(0, 4))
+                 font=("Segoe UI", 12), fg=FG_LIGHT, bg=BG).pack(anchor=tk.W, pady=(0, 4))
         number_var   = tk.StringVar()
         only_digits  = (self.root.register(lambda P: P == "" or P.isdigit()), "%P")
         number_input = tk.Entry(panel, textvariable=number_var,
-                                font=("Helvetica Neue", 12), width=20,
+                                font=("Segoe UI", 12), width=20,
                                 bg="#0f1420", fg=FG_LIGHT, insertbackground=FG_LIGHT,
                                 validate="key", validatecommand=only_digits,
                                 state=tk.NORMAL if is_active else tk.DISABLED)
@@ -533,7 +546,7 @@ class CodenamesUI:
 
         team_clr = self._team_color(self.color) if self.color else FG_MUTED
         tk.Button(panel, text="Hinweis senden",
-                  font=("Helvetica Neue", 12, "bold"),
+                  font=("Segoe UI", 12, "bold"),
                   fg=FG_LIGHT, bg=team_clr if is_active else FG_MUTED,
                   activeforeground=FG_LIGHT, activebackground=team_clr,
                   relief="flat", padx=16, pady=8, cursor="hand2" if is_active else "arrow",
@@ -543,11 +556,11 @@ class CodenamesUI:
 
         tk.Label(panel,
                  text="Nur großgeschriebene Substantive.\nKeine Teile der Gitterwörter.",
-                 font=("Helvetica Neue", 9), fg=FG_MUTED, bg=BG, justify=tk.LEFT).pack(anchor=tk.W)
+                 font=("Segoe UI", 9), fg=FG_MUTED, bg=BG, justify=tk.LEFT).pack(anchor=tk.W)
 
         if not is_active:
             tk.Label(panel, text="Warte auf deinen Zug…",
-                     font=("Helvetica Neue", 12), fg=FG_MUTED, bg=BG).pack(pady=(16, 0))
+                     font=("Segoe UI", 12), fg=FG_MUTED, bg=BG).pack(pady=(16, 0))
 
     # ── entry point ────────────────────────────────────────────────────────
 
