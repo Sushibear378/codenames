@@ -111,9 +111,20 @@ class CodenamesUI:
             w.destroy()
 
     def _center_frame(self) -> tk.Frame:
-        outer = tk.Frame(self.root, bg=BG)
-        outer.place(relx=0.5, rely=0.5, anchor="center")
-        return outer
+        sw = self.root.winfo_screenwidth()
+        sh = self.root.winfo_screenheight()
+        cv = tk.Canvas(self.root, bg=BG, highlightthickness=0)
+        cv.pack(fill=tk.BOTH, expand=True)
+        self._paint_dots(cv, sw, sh)
+        frame = tk.Frame(cv, bg=BG)
+        cv.create_window(sw // 2, sh // 2, window=frame, anchor="center")
+        return frame
+
+    def _paint_dots(self, cv: tk.Canvas, w: int, h: int):
+        dot_clr = "#1c2840"
+        for x in range(30, w + 30, 30):
+            for y in range(30, h + 30, 30):
+                cv.create_oval(x - 1, y - 1, x + 1, y + 1, fill=dot_clr, outline="")
 
     def _team_color(self, team: str) -> str:
         return RED_CLR if team.lower() == "red" else BLUE_CLR
@@ -237,21 +248,10 @@ class CodenamesUI:
                 120, lambda: self._build_game_ui(self._current_state)
             )
 
-    def _draw_bg_pattern(self):
-        sw = self.root.winfo_screenwidth()
-        sh = self.root.winfo_screenheight()
-        cv = tk.Canvas(self.root, bg=BG, highlightthickness=0)
-        cv.place(x=0, y=0, relwidth=1, relheight=1)
-        dot_clr = "#131620"
-        for x in range(30, sw + 30, 30):
-            for y in range(30, sh + 30, 30):
-                cv.create_oval(x - 1, y - 1, x + 1, y + 1, fill=dot_clr, outline="")
-
     # ── screens ────────────────────────────────────────────────────────────
 
     def _show_waiting(self):
         self._clear()
-        self._draw_bg_pattern()
         f = self._center_frame()
         tk.Label(f, text="CODENAMES",
                  font=("Segoe UI", 52, "bold"),
@@ -264,7 +264,6 @@ class CodenamesUI:
         self.role  = role
         self.color = color
         self._clear()
-        self._draw_bg_pattern()
 
         team_clr  = self._team_color(color)
         team_name = "Rot"       if color.lower() == "red"        else "Blau"
@@ -292,7 +291,6 @@ class CodenamesUI:
 
     def _build_game_ui(self, state: dict):
         self._clear()
-        self._draw_bg_pattern()
 
         active_team  = state["active_team"]
         hint         = state["current_hint"]
@@ -344,11 +342,14 @@ class CodenamesUI:
         font_sz  = max(8, tile_h // 7)
 
         # ── main area ──────────────────────────────────────────────────────
-        main = tk.Frame(self.root, bg=BG)
+        main = tk.Canvas(self.root, bg=BG, highlightthickness=0)
         main.pack(fill=tk.BOTH, expand=True)
+        self._paint_dots(main, win_w, win_h)
 
         content = tk.Frame(main, bg=BG)
-        content.place(relx=0.5, rely=0.5, anchor="center")
+        cx = win_w // 2
+        cy = (win_h - bar_h - (60 if state.get("round_over") else 0)) // 2
+        main.create_window(cx, cy, window=content, anchor="center")
 
         grid_side = tk.Frame(content, bg=BG)
         grid_side.pack(side=tk.LEFT)
