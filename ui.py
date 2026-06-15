@@ -246,7 +246,6 @@ class CodenamesUI:
         for x in range(30, sw + 30, 30):
             for y in range(30, sh + 30, 30):
                 cv.create_oval(x - 1, y - 1, x + 1, y + 1, fill=dot_clr, outline="")
-        cv.lower()
 
     # ── screens ────────────────────────────────────────────────────────────
 
