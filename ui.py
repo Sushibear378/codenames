@@ -125,6 +125,9 @@ class CodenamesUI:
         if not hint:
             return False, "Hinweis darf nicht leer sein"
 
+        if ' ' in hint:
+            return False, "Hinweis darf nur ein Wort sein"
+
         hint_words = hint.split()
         tagger     = _get_tagger()
         _vowels    = set('aeiouäöüAEIOUÄÖÜ')
@@ -441,8 +444,11 @@ class CodenamesUI:
         bar = tk.Frame(self.root, bg=BAR_BG, pady=10)
         bar.pack(side=tk.TOP, fill=tk.X)
 
+        starting_team = state.get("starting_team", "")
+
         for i, (team, clr) in enumerate((("Red", RED_CLR), ("Blue", BLUE_CLR))):
             is_active  = team.lower() == active_team.lower()
+            is_starter = team == starting_team
             name       = "ROT" if team == "Red" else "BLAU"
             wins       = state["red_wins"]   if team == "Red" else state["blue_wins"]
             found      = state["red_found"]  if team == "Red" else state["blue_found"]
@@ -456,6 +462,9 @@ class CodenamesUI:
             tk.Label(panel, text=f"{indicator}{name}",
                      font=("Helvetica Neue", 15, "bold"),
                      fg=label_fg, bg=BAR_BG).pack(side=tk.LEFT, padx=(12, 6))
+            if is_starter:
+                tk.Label(panel, text="angefangen",
+                         font=("Helvetica Neue", 9), fg=clr, bg=BAR_BG).pack(side=tk.LEFT, padx=(0, 6))
             tk.Label(panel, text=f"Missionen: {wins}",
                      font=("Helvetica Neue", 13),
                      fg=label_fg, bg=BAR_BG).pack(side=tk.LEFT, padx=6)
