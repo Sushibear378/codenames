@@ -60,10 +60,10 @@ def _start_new_round():
 
     state = _controller.get_state()
     _broadcast({"type": "state_update", "state": state})
-    if _server_on_state_update:
-        _server_on_state_update(state)
     if _server_on_role_update:
         _server_on_role_update(_server_role, _server_color)
+    if _server_on_state_update:
+        _server_on_state_update(state)
 
 
 def _handle_action(color: str, msg: dict) -> None:
@@ -230,7 +230,7 @@ if __name__ == "__main__":
             role, color, send_fn = run_server(
                 on_game_start=lambda state: ui.root.after(0, ui.show_game_from_state, state),
                 on_state_update=lambda state: ui.root.after(0, ui.show_game_from_state, state),
-                on_role_update=lambda r, _: ui.root.after(0, lambda: setattr(ui, 'role', r)),
+                on_role_update=lambda r, _: ui.root.after(0, lambda: ui.update_role(r)),
             )
             ui.on_submit_hint = lambda word, count: send_fn({"type": "submit_hint", "word": word, "count": count})
             ui.on_tile_click  = lambda word: send_fn({"type": "reveal_tile", "word": word})
@@ -246,7 +246,7 @@ if __name__ == "__main__":
             role, color, send_fn = run_client(
                 on_game_start=lambda state: ui.root.after(0, ui.show_game_from_state, state),
                 on_state_update=lambda state: ui.root.after(0, ui.show_game_from_state, state),
-                on_role_update=lambda r, _: ui.root.after(0, lambda: setattr(ui, 'role', r)),
+                on_role_update=lambda r, _: ui.root.after(0, lambda: ui.update_role(r)),
             )
             ui.on_submit_hint = lambda word, count: send_fn({"type": "submit_hint", "word": word, "count": count})
             ui.on_tile_click  = lambda word: send_fn({"type": "reveal_tile", "word": word})
