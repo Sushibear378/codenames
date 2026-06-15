@@ -14,7 +14,8 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from controller import GameController, RED_COUNT, BLUE_COUNT, WHITE_COUNT, BLACK_COUNT, TOTAL
+from controller import (GameController, STARTING_TEAM_CARDS, OTHER_TEAM_CARDS,
+                        WHITE_COUNT, BLACK_COUNT, TOTAL)
 from login import assign_role_color
 from ui import _normalize, _flatten, CodenamesUI
 
@@ -23,6 +24,7 @@ from ui import _normalize, _flatten, CodenamesUI
 
 def _make_state(
     active_team="Red",
+    starting_team="Red",
     hint=("Tier", 2),
     guesses=2,
     revealed=None,
@@ -34,10 +36,12 @@ def _make_state(
     red_wins=0,
     blue_wins=0,
 ):
+    red_total  = STARTING_TEAM_CARDS if starting_team == "Red" else OTHER_TEAM_CARDS
+    blue_total = STARTING_TEAM_CARDS if starting_team == "Blue" else OTHER_TEAM_CARDS
     words = [f"W{i}" for i in range(25)]
     colors = (
-        ["red"] * RED_COUNT
-        + ["blue"] * BLUE_COUNT
+        ["red"]   * red_total
+        + ["blue"]  * blue_total
         + ["white"] * WHITE_COUNT
         + ["black"] * BLACK_COUNT
     )
@@ -49,12 +53,13 @@ def _make_state(
         "board_agents":      board_agents,
         "revealed":          revealed_list,
         "active_team":       active_team,
+        "starting_team":     starting_team,
         "current_hint":      hint,
         "guesses_remaining": guesses,
         "red_found":         red_found,
         "blue_found":        blue_found,
-        "red_total":         RED_COUNT,
-        "blue_total":        BLUE_COUNT,
+        "red_total":         red_total,
+        "blue_total":        blue_total,
         "round_over":        round_over,
         "winner":            winner,
         "end_reason":        end_reason,
@@ -79,11 +84,38 @@ class TestBoardGeneration(unittest.TestCase):
         self.assertEqual(len(self.gc.board), TOTAL)
 
     def test_color_counts(self):
-        colors = list(self.gc.board.values())
-        self.assertEqual(colors.count("red"),   RED_COUNT)
-        self.assertEqual(colors.count("blue"),  BLUE_COUNT)
+        colors   = list(self.gc.board.values())
+        starting = self.gc.starting_team
+        red_exp  = STARTING_TEAM_CARDS if starting == "Red"  else OTHER_TEAM_CARDS
+        blue_exp = STARTING_TEAM_CARDS if starting == "Blue" else OTHER_TEAM_CARDS
+        self.assertEqual(colors.count("red"),   red_exp)
+        self.assertEqual(colors.count("blue"),  blue_exp)
         self.assertEqual(colors.count("white"), WHITE_COUNT)
         self.assertEqual(colors.count("black"), BLACK_COUNT)
+
+    def test_starting_team_has_more_cards(self):
+        starting = self.gc.starting_team
+        colors   = list(self.gc.board.values())
+        self.assertEqual(colors.count(starting.lower()), STARTING_TEAM_CARDS)
+        other = "blue" if starting == "Red" else "red"
+        self.assertEqual(colors.count(other), OTHER_TEAM_CARDS)
+
+    def test_active_team_equals_starting_team_at_round_start(self):
+        self.assertEqual(self.gc.active_team, self.gc.starting_team)
+
+    def test_start_new_round_alternates_starting_team(self):
+        first = self.gc.starting_team
+        self.gc.start_new_round()
+        second = self.gc.starting_team
+        self.assertNotEqual(first, second)
+        self.gc.start_new_round()
+        self.assertEqual(self.gc.starting_team, first)
+
+    def test_new_round_starting_team_has_more_cards(self):
+        self.gc.start_new_round()
+        starting = self.gc.starting_team
+        colors   = list(self.gc.board.values())
+        self.assertEqual(colors.count(starting.lower()), STARTING_TEAM_CARDS)
 
     def test_words_are_unique(self):
         words = list(self.gc.board.keys())
@@ -213,11 +245,10 @@ class TestRevealTile(unittest.TestCase):
         self.assertFalse(res["ok"])
 
     def test_win_by_finding_all_own_cards(self):
-        gc   = GameController()
-        team = gc.active_team
-        gc.submit_hint(team, "Tier", 9)
-        color = team.lower()
-        own_words = [w for w, c in gc.board.items() if c == color]
+        gc        = GameController()
+        team      = gc.active_team
+        own_words = [w for w, c in gc.board.items() if c == team.lower()]
+        gc.submit_hint(team, "Tier", len(own_words))
         for word in own_words[:-1]:
             gc.reveal_tile(team, word)
         res = gc.reveal_tile(team, own_words[-1])
@@ -267,7 +298,7 @@ class TestGetState(unittest.TestCase):
     def test_state_has_all_keys(self):
         required = {
             "board_full", "board_agents", "revealed",
-            "active_team", "current_hint", "guesses_remaining",
+            "active_team", "starting_team", "current_hint", "guesses_remaining",
             "red_found", "blue_found", "red_total", "blue_total",
             "round_over", "winner", "end_reason",
             "red_wins", "blue_wins",
@@ -287,9 +318,13 @@ class TestGetState(unittest.TestCase):
         self.assertIsNotNone(state["board_agents"][word])
 
     def test_state_totals(self):
-        state = self.gc.get_state()
-        self.assertEqual(state["red_total"],  RED_COUNT)
-        self.assertEqual(state["blue_total"], BLUE_COUNT)
+        state    = self.gc.get_state()
+        starting = self.gc.starting_team
+        self.assertEqual(state["red_total"],
+                         STARTING_TEAM_CARDS if starting == "Red" else OTHER_TEAM_CARDS)
+        self.assertEqual(state["blue_total"],
+                         STARTING_TEAM_CARDS if starting == "Blue" else OTHER_TEAM_CARDS)
+        self.assertEqual(state["starting_team"], starting)
 
 
 # ─── Login Assignment ─────────────────────────────────────────────────────────
@@ -602,35 +637,30 @@ class TestUIWidgets(unittest.TestCase):
 class TestFullRoundIntegration(unittest.TestCase):
 
     def test_full_round_red_wins(self):
-        gc   = GameController()
-        team = "Red"
-        gc.active_team = team
-
-        gc.submit_hint(team, "Tier", RED_COUNT)
-        own_words = [w for w, c in gc.board.items() if c == "red"]
+        gc             = GameController()
+        gc.active_team = "Red"
+        own_words      = [w for w, c in gc.board.items() if c == "red"]
+        gc.submit_hint("Red", "Tier", len(own_words))
 
         for word in own_words[:-1]:
-            res = gc.reveal_tile(team, word)
+            res = gc.reveal_tile("Red", word)
             self.assertTrue(res["ok"])
             self.assertFalse(res.get("round_over", False))
 
-        res = gc.reveal_tile(team, own_words[-1])
+        res = gc.reveal_tile("Red", own_words[-1])
         self.assertTrue(res["round_over"])
         self.assertEqual(res["winner"], "Red")
         self.assertEqual(gc.red_wins, 1)
         self.assertEqual(gc.blue_wins, 0)
 
     def test_new_round_after_win_resets_board(self):
-        gc   = GameController()
-        team = gc.active_team
-
-        gc.submit_hint(team, "Tier", RED_COUNT)
+        gc = GameController()
         gc.active_team  = "Red"
-        gc.current_hint = ("Tier", RED_COUNT)
+        gc.current_hint = ("Tier", gc.red_total)
         for w, c in gc.board.items():
             if c == "red":
                 gc.revealed.add(w)
-        gc.red_found = RED_COUNT
+        gc.red_found = gc.red_total
         gc._end_round("Red", "all_found")
 
         gc.start_new_round()

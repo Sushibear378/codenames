@@ -1,11 +1,11 @@
 import random
 from words import woerter
 
-RED_COUNT   = 8
-BLUE_COUNT  = 8
-WHITE_COUNT = 8
-BLACK_COUNT = 1
-TOTAL       = 25
+STARTING_TEAM_CARDS = 9   # team that goes first has one extra card to find
+OTHER_TEAM_CARDS    = 8
+WHITE_COUNT         = 7
+BLACK_COUNT         = 1
+TOTAL               = 25
 
 
 class GameController:
@@ -16,16 +16,21 @@ class GameController:
     """
 
     def __init__(self):
-        self.red_wins  = 0
-        self.blue_wins = 0
+        self.red_wins      = 0
+        self.blue_wins     = 0
+        self.starting_team = random.choice(["Red", "Blue"])
         self._init_round()
 
     # ── Runde initialisieren ──────────────────────────────────────────────────
 
     def _init_round(self):
+        self.red_total:         int                     = (STARTING_TEAM_CARDS if self.starting_team == "Red"
+                                                           else OTHER_TEAM_CARDS)
+        self.blue_total:        int                     = (STARTING_TEAM_CARDS if self.starting_team == "Blue"
+                                                           else OTHER_TEAM_CARDS)
         self.board:             dict[str, str]          = self._generate_board()
         self.revealed:          set[str]                = set()
-        self.active_team:       str                     = random.choice(["Red", "Blue"])
+        self.active_team:       str                     = self.starting_team
         self.current_hint:      tuple[str, int] | None  = None
         self.guesses_remaining: int                     = 0
         self.red_found:         int                     = 0
@@ -37,8 +42,8 @@ class GameController:
     def _generate_board(self) -> dict[str, str]:
         """Wählt 25 zufällige Wörter und weist jeder Kachel eine Farbe zu."""
         words  = random.sample(woerter, TOTAL)
-        colors = (["red"]   * RED_COUNT +
-                  ["blue"]  * BLUE_COUNT +
+        colors = (["red"]   * self.red_total +
+                  ["blue"]  * self.blue_total +
                   ["white"] * WHITE_COUNT +
                   ["black"] * BLACK_COUNT)
         random.shuffle(colors)
@@ -46,6 +51,7 @@ class GameController:
 
     def start_new_round(self):
         """Setzt das Spielfeld für eine neue Runde zurück; Gesamtpunkte bleiben erhalten."""
+        self.starting_team = "Blue" if self.starting_team == "Red" else "Red"
         self._init_round()
 
     # ── Hilfsmethoden ─────────────────────────────────────────────────────────
@@ -168,7 +174,7 @@ class GameController:
             if self.guesses_remaining != -1:
                 self.guesses_remaining -= 1
 
-            needed = RED_COUNT if self.active_team == "Red" else BLUE_COUNT
+            needed = self.red_total if self.active_team == "Red" else self.blue_total
             found  = self.red_found if self.active_team == "Red" else self.blue_found
 
             if found >= needed:
@@ -190,7 +196,7 @@ class GameController:
             # Prüfen ob der Gegner durch diesen Klick zufällig gewonnen hat
             opponent  = self._opponent()
             opp_color = opponent.lower()
-            needed    = RED_COUNT  if opp_color == "red"  else BLUE_COUNT
+            needed    = self.red_total if opp_color == "red" else self.blue_total
             found     = self.red_found if opp_color == "red" else self.blue_found
 
             if found >= needed:
@@ -259,8 +265,9 @@ class GameController:
             # Rundenstand (angeklickte Kacheln dieser Runde)
             "red_found":         self.red_found,
             "blue_found":        self.blue_found,
-            "red_total":         RED_COUNT,
-            "blue_total":        BLUE_COUNT,
+            "red_total":         self.red_total,
+            "blue_total":        self.blue_total,
+            "starting_team":     self.starting_team,
 
             # Rundenende
             "round_over":        self.round_over,
