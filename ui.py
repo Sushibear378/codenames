@@ -4,18 +4,18 @@ from tkinter import messagebox
 import re
 
 BG         = "#090b0f"
-FG_LIGHT   = "#e8dcc8"
-FG_MUTED   = "#7a7060"
-RED_CLR    = "#c0392b"
-BLUE_CLR   = "#2060a0"
-HIDDEN_CLR = "#1e2530"
+FG_LIGHT   = "#c0b8a8"
+FG_MUTED   = "#5a5248"
+RED_CLR    = "#882020"
+BLUE_CLR   = "#183870"
+HIDDEN_CLR = "#161e28"
 BAR_BG     = "#060810"
-GOLD       = "#c9a84c"
+GOLD       = "#a88838"
 DIM_MAP    = {
-    "red":   ("#6e1515", "#a05050"),
-    "blue":  ("#142040", "#4a7090"),
-    "white": ("#505558", "#909498"),
-    "black": ("#0d0d10", "#4a4a55"),
+    "red":   ("#350808", "#704040"),
+    "blue":  ("#060f20", "#304868"),
+    "white": ("#303030", "#606060"),
+    "black": ("#0d0d10", "#404045"),
 }
 
 _tagger = None
@@ -367,9 +367,9 @@ class CodenamesUI:
         self._grid_words = list(board.keys())
 
         color_map = {
-            "red":   (RED_CLR,    FG_LIGHT),
-            "blue":  (BLUE_CLR,   FG_LIGHT),
-            "white": ("#b8b0a4",  "#1a1610"),
+            "red":   ("#4a0c0c",  "#b89090"),
+            "blue":  ("#091428",  "#7898b8"),
+            "white": ("#383535",  "#909090"),
             "black": ("#0d0d10",  GOLD),
             None:    (HIDDEN_CLR, FG_MUTED),
         }
@@ -386,10 +386,16 @@ class CodenamesUI:
                 is_unrevealed = col is None
 
                 # pixel-sized container so tiles scale with the window
-                tile_border = GOLD if col == "black" else "#2a3040"
-                border_w    = 2    if col == "black" else 1
+                _border_clr = {
+                    "red":   "#6e1414",
+                    "blue":  "#112240",
+                    "white": "#4a4848",
+                    "black": GOLD,
+                    None:    "#242e3a",
+                }
+                tile_border = _border_clr.get(col, "#242e3a")
                 cell = tk.Frame(grid_inner, width=tile_w, height=tile_h, bg=bg,
-                                highlightbackground=tile_border, highlightthickness=border_w)
+                                highlightbackground=tile_border, highlightthickness=2)
                 cell.grid(row=i, column=j, padx=tile_pad, pady=tile_pad)
                 cell.pack_propagate(False)
 
