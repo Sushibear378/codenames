@@ -55,8 +55,8 @@ Jedes Team hat zwei Spieler:
 ### Spielablauf
 
 1. Der Spymaster des aktiven Teams gibt einen Hinweis (Wort + Zahl).
-2. Der Agent des aktiven Teams klickt Kacheln an (so viele wie angegeben, plus optional eine extra).
-3. Deckt der Agent eine **eigene Karte** auf → Zug läuft weiter (falls noch Versuche übrig).
+2. Der Agent des aktiven Teams klickt Kacheln an.
+3. Deckt der Agent eine **eigene Karte** auf → Zug läuft weiter.
 4. Deckt der Agent eine **gegnerische oder neutrale Karte** auf → Zug endet, Gegner ist dran.
 5. Deckt der Agent die **schwarze Karte** auf → das aktive Team **verliert sofort**.
 6. Ein Team gewinnt die Runde, wenn alle seine Karten gefunden wurden.
@@ -105,12 +105,15 @@ PORT      = 50001            # TCP-Port (muss auf dem Server frei sein)
 ```
 
 Alle vier Rechner müssen sich im selben Netzwerk befinden und der Port darf nicht durch eine Firewall blockiert werden.
+Dieser Rechner ist ein bestimmter im Informatikraum. 
+Wir könnten das Programm modularer gestalten, es ist jedoch wichtig, dass alle Geräte im selben Netzwerk sind. 
 
 ---
 
 ## 4. Spiel starten
 
 ### Server (1 Spieler)
+(muss momentan ein bestimmter Rechner sein, da die IP gehardcoded wurde)
 
 ```bash
 python main.py server
@@ -135,46 +138,6 @@ python main.py
 ---
 
 ## 5. Architektur
-
-### Überblick
-
-```
-┌─────────────────────────────────────────────────────┐
-│                   main.py (Entry Point)             │
-│  ┌──────────────────────┐  ┌──────────────────────┐ │
-│  │    Server-Modus      │  │    Client-Modus      │ │
-│  │  run_server(...)     │  │  run_client(...)     │ │
-│  └──────────┬───────────┘  └──────────┬───────────┘ │
-│             │                         │             │
-│  ┌──────────▼─────────────────────────▼───────────┐ │
-│  │              CodenamesUI (ui.py)               │ │
-│  │  Tkinter-Vollbild, Callbacks: on_tile_click,   │ │
-│  │  on_end_turn, on_submit_hint                   │ │
-│  └────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────┘
-
-Server-Seite:
-┌────────────────────────────────────────────────────┐
-│  main.py (_handle_action, _broadcast)              │
-│  ┌─────────────────────────────────────────────┐   │
-│  │         GameController (controller.py)      │   │
-│  │  submit_hint / reveal_tile / end_turn        │   │
-│  │  get_state → State-Snapshot                 │   │
-│  └─────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────┘
-```
-
-### Datenfluss (Beispiel: Agent klickt Kachel)
-
-```
-Agent-UI                 main.py               GameController
-   │                        │                       │
-   │── on_tile_click(word) ─►│                       │
-   │                        │── reveal_tile(color, word) ──►│
-   │                        │◄─────────── result + state ───│
-   │                        │── _broadcast(state_update) ──►│ alle 4 Clients
-   │◄── show_game_from_state(state) ──────────────────────────
-```
 
 ### Rollenverteilung
 
@@ -488,8 +451,6 @@ codenames/
 ├── login.py             Rollenvergabe: assign_role_color()
 ├── words.py             Wortliste: 4 138 deutsche Substantive
 ├── test_codenames.py    Vollständige Testsuite (Unit + Integration + Netzwerk)
-├── server.py            Prototyp (nicht aktiv)
-├── client.py            Prototyp (nicht aktiv)
 └── DOKUMENTATION.md     Diese Datei
 ```
 
