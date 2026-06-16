@@ -88,7 +88,7 @@ def _handle_action(color: str, msg: dict) -> None:
         _broadcast({"type": "state_update", "state": state})
         if _server_on_state_update:
             _server_on_state_update(state)
-        if state.get("round_over"):
+        if state.get("round_over") and not state.get("game_over"):
             threading.Timer(5.0, _start_new_round).start()
 
 

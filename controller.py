@@ -6,6 +6,7 @@ OTHER_TEAM_CARDS    = 8
 WHITE_COUNT         = 7
 BLACK_COUNT         = 1
 TOTAL               = 25
+WIN_THRESHOLD       = 3   # Rundensiege, die zum Gesamtsieg führen
 
 
 class GameController:
@@ -18,6 +19,8 @@ class GameController:
     def __init__(self):
         self.red_wins      = 0
         self.blue_wins     = 0
+        self.game_over     = False   # True sobald ein Team WIN_THRESHOLD Runden gewonnen hat
+        self.game_winner:  str | None = None
         self.starting_team = random.choice(["Red", "Blue"])
         self._init_round()
 
@@ -72,6 +75,13 @@ class GameController:
             self.red_wins += 1
         else:
             self.blue_wins += 1
+        # Gesamtspiel-Gewinnprüfung
+        if self.red_wins >= WIN_THRESHOLD:
+            self.game_over   = True
+            self.game_winner = "Red"
+        elif self.blue_wins >= WIN_THRESHOLD:
+            self.game_over   = True
+            self.game_winner = "Blue"
 
     # ── Instruktor-Aktion: Hinweis geben ─────────────────────────────────────
 
@@ -277,4 +287,9 @@ class GameController:
             # Gesamtstand (Rundensiege)
             "red_wins":          self.red_wins,
             "blue_wins":         self.blue_wins,
+
+            # Gesamtspiel-Ende
+            "game_over":         self.game_over,
+            "game_winner":       self.game_winner,
+            "win_threshold":     WIN_THRESHOLD,
         }
