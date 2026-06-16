@@ -90,6 +90,8 @@ class CodenamesUI:
         self._grid_words: list[str] = []
         self._current_state: dict | None = None
         self._resize_after = None
+        self._tile_clicked_this_turn: bool = False
+        self._last_seen_hint = None
 
         self.root.bind('<Configure>', self._on_configure)
 
@@ -221,6 +223,7 @@ class CodenamesUI:
         text_input.delete(0, tk.END)
 
     def _tile_clicked(self, word: str):
+        self._tile_clicked_this_turn = True
         if self.on_tile_click:
             self.on_tile_click(word)
 
@@ -468,8 +471,7 @@ class CodenamesUI:
                      fg=label_fg, bg=BAR_BG).pack(side=tk.LEFT, padx=6)
 
     def _build_agent_controls(self, parent, state: dict, active_team: str, can_guess: bool):
-        hint    = state["current_hint"]
-        guesses = state["guesses_remaining"]
+        hint = state["current_hint"]
 
         ctrl = tk.Frame(parent, bg=BG)
         ctrl.pack(pady=(12, 0))
@@ -486,16 +488,19 @@ class CodenamesUI:
                      font=("Helvetica Neue", 14), fg=FG_MUTED, bg=BG).pack(side=tk.LEFT, padx=(0, 24))
 
         if can_guess:
-            _, hint_count  = hint
-            tile_clicked   = guesses < hint_count + 1
-            btn_bg         = FG_MUTED if tile_clicked else HIDDEN_CLR
+            if hint != self._last_seen_hint:
+                self._tile_clicked_this_turn = False
+                self._last_seen_hint = hint
+
+            can_end  = self._tile_clicked_this_turn
+            btn_bg   = FG_MUTED if can_end else HIDDEN_CLR
             tk.Button(ctrl, text="Zug beenden",
                       font=("Helvetica Neue", 12, "bold"),
                       fg=FG_LIGHT, bg=btn_bg,
                       activeforeground=FG_LIGHT, activebackground=FG_MUTED,
                       relief="flat", padx=16, pady=6,
-                      cursor="hand2" if tile_clicked else "arrow",
-                      state=tk.NORMAL if tile_clicked else tk.DISABLED,
+                      cursor="hand2" if can_end else "arrow",
+                      state=tk.NORMAL if can_end else tk.DISABLED,
                       command=self._end_turn_clicked).pack(side=tk.LEFT)
 
     def _build_instructor_panel(self, parent, is_active: bool):

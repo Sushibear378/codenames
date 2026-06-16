@@ -73,6 +73,17 @@ class _UIStub:
     _grid_words: list[str] = []
 
 
+def _find_button(widget, text: str):
+    import tkinter as tk
+    if isinstance(widget, tk.Button) and widget.cget("text") == text:
+        return widget
+    for child in widget.winfo_children():
+        found = _find_button(child, text)
+        if found:
+            return found
+    return None
+
+
 # ─── GameController ───────────────────────────────────────────────────────────
 
 class TestBoardGeneration(unittest.TestCase):
@@ -635,6 +646,24 @@ class TestUIWidgets(unittest.TestCase):
             self.ui.show_game_from_state(state)
         except Exception as e:
             self.fail(f"show_game_from_state raised {e} on round_over state")
+
+    def test_end_turn_button_disabled_before_tile_click(self):
+        self.ui = CodenamesUI(role="agent", color="Red")
+        state   = _make_state(active_team="Red", hint=("Tier", 2), guesses=-1)
+        self.ui.show_game_from_state(state)
+        btn = _find_button(self.ui.root, "Zug beenden")
+        self.assertIsNotNone(btn, "Zug beenden button not found")
+        self.assertEqual(str(btn.cget("state")), "disabled")
+
+    def test_end_turn_button_enabled_after_tile_click(self):
+        self.ui = CodenamesUI(role="agent", color="Red")
+        state   = _make_state(active_team="Red", hint=("Tier", 2), guesses=-1)
+        self.ui.show_game_from_state(state)
+        self.ui._tile_clicked("W0")
+        self.ui.show_game_from_state(state)  # simulate server state update after tile click
+        btn = _find_button(self.ui.root, "Zug beenden")
+        self.assertIsNotNone(btn, "Zug beenden button not found")
+        self.assertEqual(str(btn.cget("state")), "normal")
 
 
 # ─── Integration: full round via GameController ───────────────────────────────
