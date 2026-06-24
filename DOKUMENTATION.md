@@ -97,16 +97,15 @@ Das Modell `morphmodel_ger.pgz` muss sich im Arbeitsverzeichnis befinden oder wi
 
 ### Netzwerkkonfiguration
 
-In `main.py` sind folgende Konstanten zu setzen:
+Der **Port** ist in `main.py` fest eingetragen:
 
 ```python
-SERVER_IP = '10.97.36.101'   # IP-Adresse des Server-Computers
-PORT      = 50001            # TCP-Port (muss auf dem Server frei sein)
+PORT = 50001   # TCP-Port (muss auf dem Server frei sein)
 ```
 
+Die **Server-IP** wird nicht mehr im Code gesetzt. Clients geben sie beim Start über einen Dialog ein (siehe [Abschnitt 4](#4-spiel-starten)). Der Server-Rechner muss dieselbe IP nach außen bekannt geben – im Schulnetz üblicherweise `10.97.36.101`.
+
 Alle vier Rechner müssen sich im selben Netzwerk befinden und der Port darf nicht durch eine Firewall blockiert werden.
-Dieser Rechner ist ein bestimmter im Informatikraum. 
-Wir könnten das Programm modularer gestalten, es ist jedoch wichtig, dass alle Geräte im selben Netzwerk sind. 
 
 ---
 
@@ -129,11 +128,18 @@ python main.py
 
 (kein Argument = Client-Modus)
 
+Beim Start erscheint ein **IP-Eingabe-Dialog**:
+
+- **Eingabefeld:** Server-IP manuell eintippen
+- **„Standard"-Button:** trägt automatisch die Schul-Server-IP `10.97.36.101` ein
+- **„Verbinden"-Button** (oder `Enter`): baut die Verbindung auf
+
 ### Startreihenfolge
 
 1. Server starten
 2. Drei Clients starten (Reihenfolge unter den Clients egal)
-3. Sobald der dritte Client verbunden ist, startet das Spiel automatisch für alle
+3. Jeden Client mit der Server-IP verbinden (Standard-Button oder manuell eingeben)
+4. Sobald der dritte Client verbunden ist, startet das Spiel automatisch für alle
 
 ---
 
@@ -168,7 +174,7 @@ Enthält sowohl Server- als auch Client-Logik in einer Datei.
 | Funktion | Beschreibung |
 |---|---|
 | `run_server(...)` | Startet TCP-Server, nimmt 3 Clients an, gibt `(role, color, send_fn)` zurück |
-| `run_client(...)` | Verbindet mit Server, gibt `(role, color, send_fn)` zurück |
+| `run_client(server_ip, ...)` | Verbindet mit `server_ip`, gibt `(role, color, send_fn)` zurück |
 | `_handle_action(color, msg)` | Leitet Spielaktion an `GameController` weiter, broadcasted den neuen State |
 | `_broadcast(msg)` | Sendet JSON-Nachricht an alle verbundenen Clients |
 | `_start_new_round()` | Startet neue Runde, tauscht Rollen, sendet State |
@@ -238,13 +244,16 @@ Tkinter-Vollbild-UI. Kommuniziert mit `main.py` ausschließlich über drei Callb
 | `on_end_turn` | `fn()` | Agent klickt „Zug beenden" |
 | `on_submit_hint` | `fn(word: str, count: int)` | Instructor sendet Hinweis |
 
-**Bildschirme:**
+**Bildschirme & Dialoge:**
 
-| Methode | Bildschirm |
+| Methode | Beschreibung |
 |---|---|
+| `show_ip_dialog(on_confirm, default_ip)` | Modaler IP-Eingabe-Dialog beim Client-Start |
 | `_show_waiting()` | Wartebildschirm (noch nicht alle Spieler verbunden) |
 | `show_role(role, color)` | Rollenanzeige (wartet auf Spielstart) |
 | `show_game_from_state(state)` | Spielfeld (Hauptansicht) |
+
+`show_ip_dialog` öffnet ein `Toplevel`-Fenster mit Eingabefeld, „Standard"-Button (setzt `default_ip`) und „Verbinden"-Button. Nach Bestätigung wird `on_confirm(ip)` aufgerufen und der Dialog geschlossen.
 
 **Hilfsfunktionen (Modul-Ebene):**
 
@@ -422,7 +431,7 @@ python test_codenames.py
 | `TestFlatten` | `_flatten()` | Umlaut-Konvertierung |
 | `TestIsValidHint` | Hinweis-Validierung | Alle Fehlerfälle |
 | `TestPerformance` | Performance | Board-Gen < 50 ms, State < 5 ms, Vollspiel < 500 ms |
-| `TestUIWidgets` | Tkinter-Widgets | Bildschirmaufbau, Callbacks, Button-Zustände |
+| `TestUIWidgets` | Tkinter-Widgets | Bildschirmaufbau, Callbacks, Button-Zustände, IP-Dialog |
 | `TestFullRoundIntegration` | Vollrunde | Rot gewinnt, Assassin, neue Runde |
 | `TestNetworkSimulation` | Netzwerk (lokal) | TCP-Simulation auf 127.0.0.1, vollständiges Spiel |
 
@@ -437,7 +446,11 @@ python test_codenames.py
 
 ### Netzwerk-Tests (`TestNetworkSimulation`)
 
-Diese Tests starten einen echten lokalen TCP-Server auf einem freien Port (`127.0.0.1`). Die produktive `SERVER_IP` wird für die Testdauer mit `unittest.mock.patch` überschrieben, sodass kein echter Netzwerkverkehr entsteht. Die `LocalGameSession`-Klasse verwaltet Server- und Client-Threads automatisch als Context Manager.
+Diese Tests starten einen echten lokalen TCP-Server auf einem freien Port (`127.0.0.1`). `run_client()` wird direkt mit `'127.0.0.1'` aufgerufen, sodass kein echter Netzwerkverkehr entsteht. Die `LocalGameSession`-Klasse verwaltet Server- und Client-Threads automatisch als Context Manager.
+
+### UI-Tests (`TestUIWidgets`)
+
+Benötigen ein laufendes Display (werden in headless-Umgebungen automatisch übersprungen). Enthalten 5 Tests für `show_ip_dialog`: Dialog öffnet sich, Standard-Button setzt die Default-IP, Verbinden-Button ruft den Callback mit der eingegebenen IP auf, Enter-Taste bestätigt, Dialog schließt sich nach Bestätigung.
 
 ---
 
