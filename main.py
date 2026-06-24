@@ -170,7 +170,7 @@ def run_server(on_game_start=None, on_state_update=None, on_role_update=None) ->
     return server_role, server_color, send_fn
 
 
-def run_client(on_game_start=None, on_state_update=None, on_role_update=None) -> tuple[str, str, callable]:
+def run_client(server_ip: str, on_game_start=None, on_state_update=None, on_role_update=None) -> tuple[str, str, callable]:
     """
     Verbindet mit dem Server und gibt (role, color, send_fn) zurück.
     send_fn(msg) sendet eine Spielaktion an den Server.
@@ -178,7 +178,7 @@ def run_client(on_game_start=None, on_state_update=None, on_role_update=None) ->
     on_role_update(role, color) wird aufgerufen, wenn die Rolle des Spielers wechselt.
     """
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect((SERVER_IP, PORT))
+    client.connect((server_ip, PORT))
 
     buf = ""
     while "\n" not in buf:
@@ -242,16 +242,20 @@ if __name__ == "__main__":
     else:
         ui = CodenamesUI()
 
-        def _client():
-            role, color, send_fn = run_client(
-                on_game_start=lambda state: ui.root.after(0, ui.show_game_from_state, state),
-                on_state_update=lambda state: ui.root.after(0, ui.show_game_from_state, state),
-                on_role_update=lambda r, _: ui.root.after(0, lambda: ui.update_role(r)),
-            )
-            ui.on_submit_hint = lambda word, count: send_fn({"type": "submit_hint", "word": word, "count": count})
-            ui.on_tile_click  = lambda word: send_fn({"type": "reveal_tile", "word": word})
-            ui.on_end_turn    = lambda: send_fn({"type": "end_turn"})
-            ui.root.after(0, ui.show_role, role, color)
+        def _start_client(ip: str):
+            def _client():
+                role, color, send_fn = run_client(
+                    ip,
+                    on_game_start=lambda state: ui.root.after(0, ui.show_game_from_state, state),
+                    on_state_update=lambda state: ui.root.after(0, ui.show_game_from_state, state),
+                    on_role_update=lambda r, _: ui.root.after(0, lambda: ui.update_role(r)),
+                )
+                ui.on_submit_hint = lambda word, count: send_fn({"type": "submit_hint", "word": word, "count": count})
+                ui.on_tile_click  = lambda word: send_fn({"type": "reveal_tile", "word": word})
+                ui.on_end_turn    = lambda: send_fn({"type": "end_turn"})
+                ui.root.after(0, ui.show_role, role, color)
 
-        threading.Thread(target=_client, daemon=True).start()
+            threading.Thread(target=_client, daemon=True).start()
+
+        ui.root.after(0, lambda: ui.show_ip_dialog(_start_client))
         ui.run()

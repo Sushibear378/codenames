@@ -168,6 +168,59 @@ class CodenamesUI:
         if self._current_state is not None:
             self._build_game_ui(self._current_state)
 
+    def show_ip_dialog(self, on_confirm: callable, default_ip: str = "10.97.36.101"):
+        """Zeigt ein modales Popup, in dem der Spieler die Server-IP eingeben kann.
+
+        Parameters
+        ----------
+        on_confirm: Callback fn(ip: str) – wird nach Bestätigung mit der eingegebenen IP aufgerufen
+        default_ip: IP, die der „Standard"-Button einsetzt (aktuelle Schul-Server-IP)
+        """
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Server-IP")
+        dialog.configure(bg=BG)
+        dialog.resizable(False, False)
+        dialog.grab_set()  # modal – blockiert das Hauptfenster
+
+        w, h = 380, 190
+        sx = self.root.winfo_screenwidth()
+        sy = self.root.winfo_screenheight()
+        dialog.geometry(f"{w}x{h}+{(sx - w) // 2}+{(sy - h) // 2}")
+
+        tk.Label(dialog, text="Server-IP eingeben", bg=BG, fg=FG_LIGHT,
+                 font=("Helvetica", 16, "bold")).pack(pady=(22, 8))
+
+        entry = tk.Entry(dialog, bg=HIDDEN_CLR, fg=FG_LIGHT,
+                         insertbackground=FG_LIGHT, font=("Helvetica", 14),
+                         width=22, justify="center", relief="flat", bd=6)
+        entry.pack(pady=4)
+        entry.focus_set()
+
+        btn_frame = tk.Frame(dialog, bg=BG)
+        btn_frame.pack(pady=14)
+
+        def _confirm():
+            ip = entry.get().strip()
+            if ip:
+                dialog.destroy()
+                on_confirm(ip)
+
+        def _set_default():
+            entry.delete(0, tk.END)
+            entry.insert(0, default_ip)
+
+        tk.Button(btn_frame, text="Standard", bg=HIDDEN_CLR, fg=FG_MUTED,
+                  font=("Helvetica", 12), relief="flat", bd=0,
+                  padx=14, pady=6, cursor="hand2",
+                  command=_set_default).pack(side="left", padx=8)
+
+        tk.Button(btn_frame, text="Verbinden", bg=BLUE_CLR, fg=FG_LIGHT,
+                  font=("Helvetica", 12, "bold"), relief="flat", bd=0,
+                  padx=14, pady=6, cursor="hand2",
+                  command=_confirm).pack(side="left", padx=8)
+
+        entry.bind("<Return>", lambda _: _confirm())
+
     # ── interne Hilfsmethoden ─────────────────────────────────────────────────
 
     def _clear(self):

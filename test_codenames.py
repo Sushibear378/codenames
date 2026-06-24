@@ -556,14 +556,12 @@ class TestPerformance(unittest.TestCase):
 # ─── UI Widget Tests (requires display) ──────────────────────────────────────
 
 def _has_display() -> bool:
-    try:
-        import tkinter as tk
-        r = tk.Tk()
-        r.withdraw()
-        r.destroy()
-        return True
-    except Exception:
-        return False
+    import subprocess
+    result = subprocess.run(
+        [sys.executable, "-c", "import tkinter; r=tkinter.Tk(); r.destroy()"],
+        capture_output=True, timeout=5,
+    )
+    return result.returncode == 0
 
 
 @unittest.skipUnless(_has_display(), "No display available")
@@ -664,6 +662,72 @@ class TestUIWidgets(unittest.TestCase):
         btn = _find_button(self.ui.root, "Zug beenden")
         self.assertIsNotNone(btn, "Zug beenden button not found")
         self.assertEqual(str(btn.cget("state")), "normal")
+
+    def test_ip_dialog_opens(self):
+        import tkinter as tk
+        self.ui = CodenamesUI()
+        called_with: list[str] = []
+        self.ui.show_ip_dialog(on_confirm=called_with.append)
+        # Dialog muss als Toplevel-Kind des Root-Fensters existieren
+        toplevels = [w for w in self.ui.root.winfo_children()
+                     if isinstance(w, tk.Toplevel)]
+        self.assertEqual(len(toplevels), 1, "Kein Toplevel-Dialog gefunden")
+
+    def test_ip_dialog_standard_button_fills_default_ip(self):
+        import tkinter as tk
+        self.ui = CodenamesUI()
+        self.ui.show_ip_dialog(on_confirm=lambda ip: None, default_ip="10.97.36.101")
+        dialog = next(w for w in self.ui.root.winfo_children()
+                      if isinstance(w, tk.Toplevel))
+        entry = next(w for w in dialog.winfo_children()
+                     if isinstance(w, tk.Entry))
+        std_btn = _find_button(dialog, "Standard")
+        self.assertIsNotNone(std_btn, "Standard-Button nicht gefunden")
+        std_btn.invoke()
+        self.assertEqual(entry.get(), "10.97.36.101")
+
+    def test_ip_dialog_verbinden_calls_callback(self):
+        import tkinter as tk
+        self.ui = CodenamesUI()
+        received: list[str] = []
+        self.ui.show_ip_dialog(on_confirm=received.append, default_ip="10.97.36.101")
+        dialog = next(w for w in self.ui.root.winfo_children()
+                      if isinstance(w, tk.Toplevel))
+        entry = next(w for w in dialog.winfo_children()
+                     if isinstance(w, tk.Entry))
+        entry.insert(0, "192.168.1.42")
+        btn = _find_button(dialog, "Verbinden")
+        self.assertIsNotNone(btn, "Verbinden-Button nicht gefunden")
+        btn.invoke()
+        self.assertEqual(received, ["192.168.1.42"])
+
+    def test_ip_dialog_enter_key_confirms(self):
+        import tkinter as tk
+        self.ui = CodenamesUI()
+        received: list[str] = []
+        self.ui.show_ip_dialog(on_confirm=received.append)
+        dialog = next(w for w in self.ui.root.winfo_children()
+                      if isinstance(w, tk.Toplevel))
+        entry = next(w for w in dialog.winfo_children()
+                     if isinstance(w, tk.Entry))
+        entry.insert(0, "10.0.0.1")
+        entry.event_generate("<Return>")
+        self.assertEqual(received, ["10.0.0.1"])
+
+    def test_ip_dialog_closes_after_confirm(self):
+        import tkinter as tk
+        self.ui = CodenamesUI()
+        self.ui.show_ip_dialog(on_confirm=lambda ip: None, default_ip="10.97.36.101")
+        dialog = next(w for w in self.ui.root.winfo_children()
+                      if isinstance(w, tk.Toplevel))
+        entry = next(w for w in dialog.winfo_children()
+                     if isinstance(w, tk.Entry))
+        entry.insert(0, "10.0.0.1")
+        _find_button(dialog, "Verbinden").invoke()
+        # Dialog darf nach Bestätigung nicht mehr existieren
+        remaining = [w for w in self.ui.root.winfo_children()
+                     if isinstance(w, tk.Toplevel)]
+        self.assertEqual(remaining, [])
 
 
 # ─── Integration: full round via GameController ───────────────────────────────
@@ -823,6 +887,7 @@ class LocalGameSession:
 
             def _run(s=slot, e=ready):
                 role, color, send_fn = _main.run_client(
+                    self.LOCAL_IP,
                     on_game_start=lambda st, sl=s:
                         self.states.setdefault(sl, []).append(st),
                     on_state_update=lambda st, sl=s:
