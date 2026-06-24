@@ -3,11 +3,13 @@ import tkinter as tk
 from tkinter import messagebox
 import re
 
+# Die UI ist mithilfe von künstlicher Intelligenz generiert worden. Dies gilt besonders für das Design
+
 # ── Farbpalette ────────────────────────────────────────────────────────────────
 # Alle Farben sind als Hex-Strings definiert, damit sie zentral geändert werden können.
 
 BG         = "#090b0f"   # Allgemeiner Fensterhintergrund (fast Schwarz, leicht blau)
-FG_LIGHT   = "#c0b8a8"   # Helle Vordergrundfarbe für Texte und Kachelbeschriftungen
+FG_LIGHT   = "#c0b8a8"   # Helle Vordergrundfarbe für Texte und KachelbeschriftungenDie UI 
 FG_MUTED   = "#5a5248"   # Gedämpfte Farbe für inaktive Texte und Trennlinien
 RED_CLR    = "#882020"   # Teamfarbe Rot
 BLUE_CLR   = "#183870"   # Teamfarbe Blau
