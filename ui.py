@@ -8,22 +8,26 @@ import re
 # ── Farbpalette ────────────────────────────────────────────────────────────────
 # Alle Farben sind als Hex-Strings definiert, damit sie zentral geändert werden können.
 
-BG         = "#090b0f"   # Allgemeiner Fensterhintergrund (fast Schwarz, leicht blau)
-FG_LIGHT   = "#c0b8a8"   # Helle Vordergrundfarbe für Texte und KachelbeschriftungenDie UI 
-FG_MUTED   = "#5a5248"   # Gedämpfte Farbe für inaktive Texte und Trennlinien
-RED_CLR    = "#882020"   # Teamfarbe Rot
-BLUE_CLR   = "#183870"   # Teamfarbe Blau
-HIDDEN_CLR = "#161e28"   # Hintergrund noch nicht aufgedeckter Kacheln (dunkelblaugrau)
-BAR_BG     = "#060810"   # Hintergrund der Punkte-Leiste oben (noch dunkler als BG)
-GOLD       = "#a88838"   # Goldfarbe für die schwarze (Assassin-)Karte
+BG         = "#1A1C23"   # Deep, rich charcoal
+FG_LIGHT   = "#E2E8F0"   # Clear off-white
+FG_MUTED   = "#64748B"   # Slate gray
+RED_CLR    = "#DC143C"   # Crimson Red
+BLUE_CLR   = "#2563EB"   # Cobalt Blue
+HIDDEN_CLR = "#2A2D3A"   # Hintergrund noch nicht aufgedeckter Kacheln
+BAR_BG     = "#111318"   # Hintergrund der Punkte-Leiste
+GOLD       = "#FF0000"   # Glowing red for Assassin text/border
+NEUTRAL_CLR= "#D2B48C"   # Warm sand / Manila folder
+
+UI_FONT    = "Inter"           # Main UI font
+CODE_FONT  = "JetBrains Mono"  # Codenames / Kacheln font
 
 # Farben für bereits aufgedeckte Kacheln in der Spymaster-Ansicht (abgedunkelt).
 # Tupel: (Hintergrundfarbe, Textfarbe) je Team-Farbe
 DIM_MAP = {
-    "red":   ("#350808", "#704040"),   # aufgedeckte Rot-Karte
-    "blue":  ("#060f20", "#304868"),   # aufgedeckte Blau-Karte
-    "white": ("#303030", "#606060"),   # aufgedeckte neutrale Karte
-    "black": ("#0d0d10", "#404045"),   # aufgedeckte Assassin-Karte
+    "red":   ("#5c0a1a", "#9b1e35"),   # aufgedeckte Rot-Karte
+    "blue":  ("#0f2c73", "#1e4db8"),   # aufgedeckte Blau-Karte
+    "white": ("#806a4d", "#bfa482"),   # aufgedeckte neutrale Karte
+    "black": ("#050505", "#404045"),   # aufgedeckte Assassin-Karte
 }
 
 # ── HanTa-Tagger (lazy singleton) ─────────────────────────────────────────────
@@ -505,16 +509,16 @@ class CodenamesUI:
         self._clear()
         f = self._center_frame()
         tk.Label(f, text="CODENAMES",
-                 font=("Segoe UI", 52, "bold"),
+                 font=(UI_FONT, 52, "bold"),
                  fg=FG_LIGHT, bg=BG).pack(pady=(0, 8))
         tk.Frame(f, height=3, width=320, bg=FG_MUTED).pack()
         tk.Label(f, text="Warte auf Spieler…",
-                 font=("Segoe UI", 20), fg=FG_MUTED, bg=BG).pack(pady=(32, 0))
+                 font=(UI_FONT, 20), fg=FG_MUTED, bg=BG).pack(pady=(32, 0))
         if self._server_ip:
             tk.Label(f, text="Server-IP",
-                     font=("Segoe UI", 13), fg=FG_MUTED, bg=BG).pack(pady=(28, 2))
+                     font=(UI_FONT, 13), fg=FG_MUTED, bg=BG).pack(pady=(28, 2))
             tk.Label(f, text=self._server_ip,
-                     font=("Courier New", 28, "bold"), fg=FG_LIGHT, bg=BG).pack()
+                     font=(CODE_FONT, 28, "bold"), fg=FG_LIGHT, bg=BG).pack()
 
     def show_role(self, role: str, color: str):
         """Zeigt die Rollen- und Teamzuweisung an, während auf die übrigen Spieler gewartet wird.
@@ -532,25 +536,25 @@ class CodenamesUI:
 
         f = self._center_frame()
         tk.Label(f, text="CODENAMES",
-                 font=("Segoe UI", 52, "bold"),
+                 font=(UI_FONT, 52, "bold"),
                  fg=FG_LIGHT, bg=BG).pack(pady=(0, 8))
         tk.Frame(f, height=3, width=320, bg=team_clr).pack()     # Teamfarbiger Trennstrich
         tk.Label(f, text=f"Team {team_name}",
-                 font=("Segoe UI", 18), fg=team_clr, bg=BG).pack(pady=(24, 4))
+                 font=(UI_FONT, 18), fg=team_clr, bg=BG).pack(pady=(24, 4))
         tk.Label(f, text=role_name,
-                 font=("Segoe UI", 36, "bold"),
+                 font=(UI_FONT, 36, "bold"),
                  fg=FG_LIGHT, bg=BG).pack(pady=(0, 8))
         tk.Label(f, text="Viel Erfolg!",
-                 font=("Segoe UI", 14), fg=FG_MUTED, bg=BG).pack(pady=(0, 24))
+                 font=(UI_FONT, 14), fg=FG_MUTED, bg=BG).pack(pady=(0, 24))
         # Kein „Weiter"-Button – das Spiel startet automatisch, wenn alle 4 Spieler verbunden sind
         tk.Label(f, text="Warte auf andere Spieler…",
-                 font=("Segoe UI", 14), fg=FG_MUTED, bg=BG).pack()
+                 font=(UI_FONT, 14), fg=FG_MUTED, bg=BG).pack()
         if self._server_ip:
             tk.Frame(f, height=1, width=260, bg=FG_MUTED).pack(pady=(20, 0))
             tk.Label(f, text="Server-IP",
-                     font=("Segoe UI", 11), fg=FG_MUTED, bg=BG).pack(pady=(8, 2))
+                     font=(UI_FONT, 11), fg=FG_MUTED, bg=BG).pack(pady=(8, 2))
             tk.Label(f, text=self._server_ip,
-                     font=("Courier New", 22, "bold"), fg=FG_LIGHT, bg=BG).pack()
+                     font=(CODE_FONT, 22, "bold"), fg=FG_LIGHT, bg=BG).pack()
 
     def show_game_from_state(self, state: dict):
         """Speichert den aktuellen Spielzustand und baut das Spielfeld neu auf.
@@ -663,10 +667,10 @@ class CodenamesUI:
 
         # Farb-Mapping: Teamfarbe → (Hintergrundfarbe, Textfarbe) für aufgedeckte Kacheln
         color_map = {
-            "red":   ("#4a0c0c",  "#b89090"),
-            "blue":  ("#091428",  "#7898b8"),
-            "white": ("#383535",  "#909090"),
-            "black": ("#0d0d10",  GOLD),
+            "red":   (RED_CLR,  "#FFFFFF"),
+            "blue":  (BLUE_CLR, "#FFFFFF"),
+            "white": (NEUTRAL_CLR, "#1A1A1A"),
+            "black": ("#050505", GOLD),
             None:    (HIDDEN_CLR, FG_MUTED),   # None = noch nicht aufgedeckt (Agent-Ansicht)
         }
 
@@ -684,13 +688,13 @@ class CodenamesUI:
 
                 # Rahmenfarbe je nach Kachelfarbe für subtile visuelle Trennung
                 _border_clr = {
-                    "red":   "#6e1414",
-                    "blue":  "#112240",
-                    "white": "#4a4848",
+                    "red":   "#800000",
+                    "blue":  "#002A7A",
+                    "white": "#A68A61",
                     "black": GOLD,
-                    None:    "#242e3a",
+                    None:    "#3F445B",
                 }
-                tile_border = _border_clr.get(col, "#242e3a")
+                tile_border = _border_clr.get(col, "#3F445B")
 
                 # Container in fester Pixelgröße (pack_propagate=False verhindert Schrumpfen)
                 cell = tk.Frame(grid_inner, width=tile_w, height=tile_h, bg=bg,
@@ -703,26 +707,29 @@ class CodenamesUI:
                     dim_bg, dim_fg = DIM_MAP.get(col, (bg, FG_MUTED))
                     tk.Label(
                         cell, text=f"{word}  ✓",
-                        font=("Segoe UI", font_sz, "bold"),
-                        bg=dim_bg, fg=dim_fg, relief="flat",
+                        font=(CODE_FONT, font_sz, "bold"),
+                        bg=dim_bg, fg=dim_fg, relief="raised", bd=3,
                     ).pack(fill=tk.BOTH, expand=True)
                 elif can_guess and is_unrevealed:
                     # Aktiver Agent: Noch nicht aufgedeckte Kachel als klickbarer Button
-                    tk.Button(
+                    btn = tk.Button(
                         cell, text=word,
-                        font=("Segoe UI", font_sz, "bold"),
+                        font=(CODE_FONT, font_sz, "bold"),
                         bg=HIDDEN_CLR, fg=FG_LIGHT,
-                        activebackground="#2a3d52",
+                        activebackground="#3F445B",
                         activeforeground=FG_LIGHT,
-                        relief="flat", cursor="hand2",
+                        relief="raised", bd=3, cursor="hand2",
                         command=lambda w=word: self._tile_clicked(w),
-                    ).pack(fill=tk.BOTH, expand=True)
+                    )
+                    btn.pack(fill=tk.BOTH, expand=True)
+                    btn.bind("<Enter>", lambda e, b=btn: b.config(bg="#3F445B"))
+                    btn.bind("<Leave>", lambda e, b=btn: b.config(bg=HIDDEN_CLR))
                 else:
                     # Inaktiver Spieler oder bereits aufgedeckte Kachel: nur Label (nicht klickbar)
                     tk.Label(
                         cell, text=word,
-                        font=("Segoe UI", font_sz, "bold"),
-                        bg=bg, fg=fg, relief="flat",
+                        font=(CODE_FONT, font_sz, "bold"),
+                        bg=bg, fg=fg, relief="raised", bd=3,
                     ).pack(fill=tk.BOTH, expand=True)
 
         # ── Hinweisanzeige + „Zug beenden"-Button (nur für Agenten) ───────
@@ -755,6 +762,7 @@ class CodenamesUI:
         # Abschlusstext je nach Gewinnbedingung
         if reason == "assassin":
             detail = "Die schwarze Karte wurde aufgedeckt!"
+            self.root.after(100, self._trigger_glitch_effect)
         else:
             detail = "Alle eigenen Karten gefunden!"
 
@@ -762,7 +770,7 @@ class CodenamesUI:
         banner.pack(fill=tk.X)
         tk.Label(banner,
                  text=f"Team {team_name} gewinnt die Runde!  —  {detail}",
-                 font=("Segoe UI", 15, "bold"),
+                 font=(UI_FONT, 15, "bold"),
                  fg=FG_LIGHT, bg=team_clr).pack()
 
         if game_over:
@@ -770,13 +778,33 @@ class CodenamesUI:
             gw_name = "Rot" if game_winner and game_winner.lower() == "red" else "Blau"
             tk.Label(banner,
                      text=f"🏆  Team {gw_name} gewinnt das Spiel mit {threshold} Rundensiegen!  🏆",
-                     font=("Segoe UI", 13, "bold"),
+                     font=(UI_FONT, 13, "bold"),
                      fg=GOLD, bg=team_clr).pack()
         else:
             tk.Label(banner,
                      text="Neue Runde startet in 5 Sekunden…",
-                     font=("Segoe UI", 11),
+                     font=(UI_FONT, 11),
                      fg=FG_LIGHT, bg=team_clr).pack()
+
+
+    def _trigger_glitch_effect(self):
+        """Erzeugt einen visuellen Glitch-Effekt (rotes Aufblitzen) für den Assassin."""
+        original_bg = BG
+        flash_colors = [GOLD, "#000000", GOLD, original_bg]
+        delay = 0
+
+        for color in flash_colors:
+            self.root.after(delay, lambda c=color: self._apply_glitch_color(c))
+            delay += 150
+
+    def _apply_glitch_color(self, color):
+        self.root.config(bg=color)
+        for widget in self.root.winfo_children():
+            try:
+                if widget.winfo_class() in ('Frame', 'Canvas', 'Label'):
+                    widget.config(bg=color)
+            except:
+                pass
 
     def _build_score_bar(self, state: dict, active_team: str):
         """Baut die Punkte-Leiste am oberen Fensterrand auf.
@@ -804,17 +832,17 @@ class CodenamesUI:
             panel.pack(side=tk.LEFT, expand=True)
 
             tk.Label(panel, text=f"{indicator}{name}",
-                     font=("Segoe UI", 15, "bold"),
+                     font=(UI_FONT, 15, "bold"),
                      fg=label_fg, bg=BAR_BG).pack(side=tk.LEFT, padx=(12, 6))
             if is_starter:
                 tk.Label(panel, text="angefangen",
-                         font=("Segoe UI", 9), fg=clr, bg=BAR_BG).pack(side=tk.LEFT, padx=(0, 6))
+                         font=(UI_FONT, 9), fg=clr, bg=BAR_BG).pack(side=tk.LEFT, padx=(0, 6))
             threshold = state.get("win_threshold", 3)
             tk.Label(panel, text=f"Runden: {wins}/{threshold}",
-                     font=("Segoe UI", 13),
+                     font=(UI_FONT, 13),
                      fg=label_fg, bg=BAR_BG).pack(side=tk.LEFT, padx=6)
             tk.Label(panel, text=f"Karten: {found}/{total}",
-                     font=("Segoe UI", 13),
+                     font=(UI_FONT, 13),
                      fg=label_fg, bg=BAR_BG).pack(side=tk.LEFT, padx=6)
 
     def _build_agent_controls(self, parent, state: dict, active_team: str, can_guess: bool):
@@ -836,12 +864,12 @@ class CodenamesUI:
             word, count = hint
             tk.Label(ctrl,
                      text=f'Hinweis: "{word}"  ({count})',
-                     font=("Segoe UI", 16, "bold"),
+                     font=(UI_FONT, 16, "bold"),
                      fg=self._team_color(active_team), bg=BG).pack(side=tk.LEFT, padx=(0, 24))
         else:
             tk.Label(ctrl,
                      text="Warte auf Hinweis…",
-                     font=("Segoe UI", 14), fg=FG_MUTED, bg=BG).pack(side=tk.LEFT, padx=(0, 24))
+                     font=(UI_FONT, 14), fg=FG_MUTED, bg=BG).pack(side=tk.LEFT, padx=(0, 24))
 
         if can_guess:
             # Neuer Hinweis: Klick-Status für diesen Zug zurücksetzen
@@ -852,7 +880,7 @@ class CodenamesUI:
             can_end  = self._tile_clicked_this_turn   # Mindestens eine Kachel wurde geklickt
             btn_bg   = FG_MUTED if can_end else HIDDEN_CLR
             tk.Button(ctrl, text="Zug beenden",
-                      font=("Segoe UI", 12, "bold"),
+                      font=(UI_FONT, 12, "bold"),
                       fg=FG_LIGHT, bg=btn_bg,
                       activeforeground=FG_LIGHT, activebackground=FG_MUTED,
                       relief="flat", padx=16, pady=6,
@@ -875,27 +903,27 @@ class CodenamesUI:
         panel = parent
 
         tk.Label(panel, text="Hinweis geben",
-                 font=("Segoe UI", 18, "bold"),
+                 font=(UI_FONT, 18, "bold"),
                  fg=FG_LIGHT, bg=BG).pack(pady=(0, 16))
 
         # ── Hinweiswort-Eingabe ────────────────────────────────────────────
         tk.Label(panel, text="Hinweis (Substantive):",
-                 font=("Segoe UI", 12), fg=FG_LIGHT, bg=BG).pack(anchor=tk.W, pady=(0, 4))
+                 font=(UI_FONT, 12), fg=FG_LIGHT, bg=BG).pack(anchor=tk.W, pady=(0, 4))
         text_var   = tk.StringVar()
         text_input = tk.Entry(panel, textvariable=text_var,
-                              font=("Segoe UI", 12), width=20,
+                              font=(UI_FONT, 12), width=20,
                               bg="#0f1420", fg=FG_LIGHT, insertbackground=FG_LIGHT,
                               state=tk.NORMAL if is_active else tk.DISABLED)
         text_input.pack(anchor=tk.W, pady=(0, 16))
 
         # ── Anzahl-Eingabe ─────────────────────────────────────────────────
         tk.Label(panel, text="Anzahl:",
-                 font=("Segoe UI", 12), fg=FG_LIGHT, bg=BG).pack(anchor=tk.W, pady=(0, 4))
+                 font=(UI_FONT, 12), fg=FG_LIGHT, bg=BG).pack(anchor=tk.W, pady=(0, 4))
         number_var   = tk.StringVar()
         # validatecommand verhindert, dass Nicht-Ziffern eingetippt werden können
         only_digits  = (self.root.register(lambda P: P == "" or P.isdigit()), "%P")
         number_input = tk.Entry(panel, textvariable=number_var,
-                                font=("Segoe UI", 12), width=20,
+                                font=(UI_FONT, 12), width=20,
                                 bg="#0f1420", fg=FG_LIGHT, insertbackground=FG_LIGHT,
                                 validate="key", validatecommand=only_digits,
                                 state=tk.NORMAL if is_active else tk.DISABLED)
@@ -904,7 +932,7 @@ class CodenamesUI:
         # ── Senden-Button ──────────────────────────────────────────────────
         team_clr = self._team_color(self.color) if self.color else FG_MUTED
         tk.Button(panel, text="Hinweis senden",
-                  font=("Segoe UI", 12, "bold"),
+                  font=(UI_FONT, 12, "bold"),
                   fg=FG_LIGHT, bg=team_clr if is_active else FG_MUTED,
                   activeforeground=FG_LIGHT, activebackground=team_clr,
                   relief="flat", padx=16, pady=8, cursor="hand2" if is_active else "arrow",
@@ -915,12 +943,12 @@ class CodenamesUI:
         # Regelhinweis als kleiner Text unter dem Button
         tk.Label(panel,
                  text="Nur großgeschriebene Substantive.\nKeine Teile der Gitterwörter.",
-                 font=("Segoe UI", 9), fg=FG_MUTED, bg=BG, justify=tk.LEFT).pack(anchor=tk.W)
+                 font=(UI_FONT, 9), fg=FG_MUTED, bg=BG, justify=tk.LEFT).pack(anchor=tk.W)
 
         # Wartebotschaft, wenn dieser Instructor gerade nicht dran ist
         if not is_active:
             tk.Label(panel, text="Warte auf deinen Zug…",
-                     font=("Segoe UI", 12), fg=FG_MUTED, bg=BG).pack(pady=(16, 0))
+                     font=(UI_FONT, 12), fg=FG_MUTED, bg=BG).pack(pady=(16, 0))
 
     # ── Startpunkt ────────────────────────────────────────────────────────────
 
