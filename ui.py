@@ -123,13 +123,14 @@ class CodenamesUI:
     Callbacks bereit, über die main.py auf Spieleraktionen reagieren kann.
     """
 
-    def __init__(self, role: str = None, color: str = None):
+    def __init__(self, role: str = None, color: str = None, server_ip: str = None):
         """Erstellt das Hauptfenster und initialisiert alle Zustände.
 
         Parameters
         ----------
-        role:  Rolle des Spielers ('instructor' oder 'agent'), oder None wenn noch nicht bekannt
-        color: Teamfarbe des Spielers ('red' oder 'blue'), oder None wenn noch nicht bekannt
+        role:      Rolle des Spielers ('instructor' oder 'agent'), oder None wenn noch nicht bekannt
+        color:     Teamfarbe des Spielers ('red' oder 'blue'), oder None wenn noch nicht bekannt
+        server_ip: Eigene LAN-IP (nur Server-Modus); wird im Wartebildschirm angezeigt
         """
         self.root = tk.Tk()
         self.root.title("Codenames")
@@ -139,6 +140,7 @@ class CodenamesUI:
 
         self.role  = role    # Spielerrolle: 'instructor' (Spymaster) oder 'agent' (Ratender)
         self.color = color   # Teamfarbe: 'red' oder 'blue'
+        self._server_ip = server_ip  # Eigene LAN-IP (nur Server-Modus), für Wartebildschirm
 
         # Callbacks – werden von main.py gesetzt, sobald die Netzwerkverbindung steht
         self.on_tile_click:   callable | None = None   # fn(word)  → Kachel angeklickt
@@ -441,7 +443,8 @@ class CodenamesUI:
     # ── Bildschirmaufbauten ───────────────────────────────────────────────────
 
     def _show_waiting(self):
-        """Zeigt den Wartebildschirm an, bevor alle Spieler verbunden sind."""
+        """Zeigt den Wartebildschirm an, bevor alle Spieler verbunden sind.
+        Im Server-Modus wird die eigene LAN-IP gross angezeigt, damit Mitspieler sie ablesen können."""
         self._clear()
         f = self._center_frame()
         tk.Label(f, text="CODENAMES",
@@ -450,6 +453,11 @@ class CodenamesUI:
         tk.Frame(f, height=3, width=320, bg=FG_MUTED).pack()
         tk.Label(f, text="Warte auf Spieler…",
                  font=("Segoe UI", 20), fg=FG_MUTED, bg=BG).pack(pady=(32, 0))
+        if self._server_ip:
+            tk.Label(f, text="Server-IP",
+                     font=("Segoe UI", 13), fg=FG_MUTED, bg=BG).pack(pady=(28, 2))
+            tk.Label(f, text=self._server_ip,
+                     font=("Courier New", 28, "bold"), fg=FG_LIGHT, bg=BG).pack()
 
     def show_role(self, role: str, color: str):
         """Zeigt die Rollen- und Teamzuweisung an, während auf die übrigen Spieler gewartet wird.
