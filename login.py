@@ -1,3 +1,5 @@
+#gibt den jeweiligen Spieler die Rolle und Teamfarbe für das Spiel
+
 import random
 from itertools import product
 

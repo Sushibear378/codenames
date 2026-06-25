@@ -1,3 +1,5 @@
+#Lister der Wörter, aus denen 25 zufällig für das Spiel ausgewählt werden
+
 woerter =["Aal",
 "Abakus",
 "Abdruck",
