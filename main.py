@@ -6,8 +6,20 @@ import threading
 from login import assign_role_color
 from controller import GameController
 
-SERVER_IP = '10.97.36.101'
-PORT      = 50001
+PORT = 50001
+
+
+def _get_local_ip() -> str:
+    """Gibt die eigene LAN-IP zurück, indem eine UDP-Verbindung simuliert wird.
+    Sendet keine echten Pakete – ermittelt nur die ausgehende Netzwerkschnittstelle."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "unbekannt"
 
 # ── Shared server state ───────────────────────────────────────────────────────
 
@@ -224,7 +236,7 @@ if __name__ == "__main__":
     from ui import CodenamesUI
 
     if len(sys.argv) > 1 and sys.argv[1] == "server":
-        ui = CodenamesUI()
+        ui = CodenamesUI(server_ip=_get_local_ip())
 
         def _server():
             role, color, send_fn = run_server(
