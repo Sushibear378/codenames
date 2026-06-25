@@ -856,10 +856,9 @@ class LocalGameSession:
         _main._server_color           = ""
 
     def _apply_patches(self):
-        p1 = patch.object(_main, 'SERVER_IP', self.LOCAL_IP)
-        p2 = patch.object(_main, 'PORT',      self.port)
-        p1.start(); p2.start()
-        self._patches = [p1, p2]
+        p1 = patch.object(_main, 'PORT', self.port)
+        p1.start()
+        self._patches = [p1]
 
     def _start_server(self):
         ready = threading.Event()

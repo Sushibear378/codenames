@@ -114,6 +114,63 @@ def _get_stem(w: str) -> str:
     return w
 
 
+def ask_server_ip(default_ip: str = "10.97.36.101") -> str | None:
+    """Zeigt einen eigenständigen IP-Eingabe-Dialog vor dem Spielstart.
+
+    Erstellt ein eigenes kleines tk.Tk()-Fenster (kein Vollbild), wartet auf
+    Benutzereingabe und gibt die eingegebene IP zurück. Gibt None zurück, wenn
+    das Fenster ohne Eingabe geschlossen wird.
+
+    """
+    root = tk.Tk()
+    root.title("Server-IP")
+    root.configure(bg=BG)
+    root.resizable(False, False)
+
+    root.update_idletasks()
+    w, h = 380, 190
+    sx = root.winfo_screenwidth()
+    sy = root.winfo_screenheight()
+    root.geometry(f"{w}x{h}+{(sx - w) // 2}+{(sy - h) // 2}")
+
+    result: list[str | None] = [None]
+
+    tk.Label(root, text="Server-IP eingeben", bg=BG, fg=FG_LIGHT,
+             font=("Helvetica", 16, "bold")).pack(pady=(22, 8))
+
+    entry = tk.Entry(root, bg=HIDDEN_CLR, fg=FG_LIGHT, insertbackground=FG_LIGHT,
+                     font=("Helvetica", 14), width=22, justify="center",
+                     relief="flat", bd=6)
+    entry.pack(pady=4)
+    entry.focus_set()
+
+    btn_frame = tk.Frame(root, bg=BG)
+    btn_frame.pack(pady=14)
+
+    def _confirm():
+        ip = entry.get().strip()
+        if ip:
+            result[0] = ip
+            root.destroy()
+
+    def _set_default():
+        entry.delete(0, tk.END)
+        entry.insert(0, default_ip)
+
+    tk.Button(btn_frame, text="Standard", bg=HIDDEN_CLR, fg=FG_MUTED,
+              font=("Helvetica", 12), relief="flat", bd=0,
+              padx=14, pady=6, cursor="hand2",
+              command=_set_default).pack(side="left", padx=8)
+    tk.Button(btn_frame, text="Verbinden", bg=BLUE_CLR, fg=FG_LIGHT,
+              font=("Helvetica", 12, "bold"), relief="flat", bd=0,
+              padx=14, pady=6, cursor="hand2",
+              command=_confirm).pack(side="left", padx=8)
+
+    entry.bind("<Return>", lambda _: _confirm())
+    root.mainloop()
+    return result[0]
+
+
 # ── Haupt-UI-Klasse ────────────────────────────────────────────────────────────
 
 class CodenamesUI:
@@ -488,6 +545,12 @@ class CodenamesUI:
         # Kein „Weiter"-Button – das Spiel startet automatisch, wenn alle 4 Spieler verbunden sind
         tk.Label(f, text="Warte auf andere Spieler…",
                  font=("Segoe UI", 14), fg=FG_MUTED, bg=BG).pack()
+        if self._server_ip:
+            tk.Frame(f, height=1, width=260, bg=FG_MUTED).pack(pady=(20, 0))
+            tk.Label(f, text="Server-IP",
+                     font=("Segoe UI", 11), fg=FG_MUTED, bg=BG).pack(pady=(8, 2))
+            tk.Label(f, text=self._server_ip,
+                     font=("Courier New", 22, "bold"), fg=FG_LIGHT, bg=BG).pack()
 
     def show_game_from_state(self, state: dict):
         """Speichert den aktuellen Spielzustand und baut das Spielfeld neu auf.
