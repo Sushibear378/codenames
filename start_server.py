@@ -1,4 +1,5 @@
-import sys
+# Entspricht: python main.py server
+
 import threading
 from ui import CodenamesUI
 import main
@@ -7,6 +8,7 @@ if __name__ == "__main__":
     ui = CodenamesUI(server_ip=main._get_local_ip())
 
     def _server():
+        # ui.root.after() leitet Callbacks in den Tkinter-Mainloop um 
         role, color, send_fn = main.run_server(
             on_game_start=lambda state: ui.root.after(0, ui.show_game_from_state, state),
             on_state_update=lambda state: ui.root.after(0, ui.show_game_from_state, state),

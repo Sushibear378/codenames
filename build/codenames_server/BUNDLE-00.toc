@@ -1,0 +1,3 @@
+([('codenames_server',
+   '/Users/mioboege/Documents/Schule/codenames/codenames/dist/codenames_server',
+   'EXECUTABLE')],)

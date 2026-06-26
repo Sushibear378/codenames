@@ -1,4 +1,4 @@
-#gibt den jeweiligen Spieler die Rolle und Teamfarbe für das Spiel
+# login.py – Zufällige Verteilung der 4 Rollen (Spymaster/Agent × Rot/Blau).
 
 import random
 from itertools import product
@@ -6,7 +6,9 @@ from itertools import product
 PlayerRoles = ["instructor", "agent"]
 TeamColors  = ["Red", "Blue"]
 
-def assign_role_color():
+
+def assign_role_color() -> dict:
+    """Mischt alle 4 Rollen-Farb-Kombinationen und verteilt sie auf Server + 3 Clients."""
     pairs = list(product(PlayerRoles, TeamColors))
     random.shuffle(pairs)
     assignments = {"server": pairs[0]}
@@ -14,7 +16,7 @@ def assign_role_color():
         assignments[f"client_{i}"] = pair
     return assignments
 
+
 def get_assignment(player_id: str) -> tuple[str, str]:
-    """Return (role, team_color) for a given player_id."""
-    assignments = assign_role_color()
-    return assignments[player_id]
+    """Nur für Tests; gibt (rolle, teamfarbe) für eine Spieler-ID zurück."""
+    return assign_role_color()[player_id]

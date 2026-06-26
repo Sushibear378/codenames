@@ -25,7 +25,7 @@ DIM_MAP = {
     "black": ("#0d0d10", "#404045"),   # aufgedeckte Assassin-Karte
 }
 
-# ── HanTa-Tagger (lazy singleton) ─────────────────────────────────────────────
+# Prüfung des Hints
 
 _tagger = None  # Wird beim ersten Aufruf von _get_tagger() initialisiert
 
