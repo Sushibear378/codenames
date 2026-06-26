@@ -2,6 +2,7 @@
 
 Kartenspiel Codenames online für 4 Spieler, auf Python gecoded mit library Tkinter.
 Das Spiel läuft via LAN auf einem Rechner als Server und die anderen 3 verbinden sich per TCP und JSON mit dem Server.
+Python >= 3.10 benötigt
 
 
 ## Installation & Start
@@ -17,16 +18,17 @@ pip install HanTa
 
 Server starten (1 Spieler):
 
-python main.py server
+python main.py server / codenames_server.exe (Windows)
 
-Clients starten (3 Spieler, kein Argument):
+Clients starten (3 Spieler):
 
-python main.py
+python main.py / codenames_client.exe (Windows)
+
 Beim Client-Start öffnet sich ein IP-Dialog: Server-IP eintippen oder per Standard-Button die Schul-IP (`10.97.36.101`) setzen, dann Verbinden.
 
 Sobald der dritte Client verbunden ist, startet das Spiel automatisch für alle.
 
-Es ist vorgesehen, dass am Agent-PC auch mehrere Spieler sitzen und zusammen spielen, der Spymaster soll aber alleine sein. 
+Es ist vorgesehen, dass am Agent-PC auch mehrere Spieler sitzen und zusammen spielen können, der Spymaster soll aber alleine sein. 
 
 ---
 
