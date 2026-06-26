@@ -89,6 +89,7 @@ end_turn{}:                 Agent beendet den Zug
 
 ## KI Nutzung
 Die Scripts wurden alle mithilfe von KI (Claude Code Opus 4.8 High) erstellt, da wir beide noch relativ wenig Erfahrung hatten mit TCP und JSON. Dazu war die UI auch sehr aufwendig (fast 1000 Zeilen). Dafür konnten wir besser uns auf das Spiel an sich und die Prozesse beim Entwickeln von anspruchsvollerer Software konzentrieren, wie z. B. Server-Client mit TCP und JSON, saubere Software-Architektur und Implementierung von Git. 
+Dafür ist die Dokumentation und das README 100% ohne KI geschrieben worden. 
 
 
 
