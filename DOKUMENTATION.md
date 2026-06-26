@@ -1,472 +1,96 @@
-# Codenames – Technische Dokumentation
+# Codenames – Dokumentation
 
-## Inhaltsverzeichnis
+Kartenspiel Codenames online für 4 Spieler, auf Python gecoded mit library Tkinter.
+Das Spiel läuft via LAN auf einem Rechner als Server und die anderen 3 verbinden sich per TCP und JSON mit dem Server.
 
-1. [Projektübersicht](#1-projektübersicht)
-2. [Spielregeln](#2-spielregeln)
-3. [Voraussetzungen & Installation](#3-voraussetzungen--installation)
-4. [Spiel starten](#4-spiel-starten)
-5. [Architektur](#5-architektur)
-6. [Modulbeschreibungen](#6-modulbeschreibungen)
-7. [Netzwerkprotokoll](#7-netzwerkprotokoll)
-8. [Spielzustand (State-Objekt)](#8-spielzustand-state-objekt)
-9. [Hinweis-Validierung](#9-hinweis-validierung)
-10. [Tests](#10-tests)
-11. [Dateiübersicht](#11-dateiübersicht)
 
----
+## Installation & Start
 
-## 1. Projektübersicht
+Es ist nicht benötogt, Pakete zu installieren, es werden nur Standard-Libraries genutzt
+(tkinter, socket, threading, json, re, random, itertools, time).
 
-Dieses Projekt ist eine netzwerkfähige Python-Implementierung des Brettspiels **Codenames** für genau **4 Spieler**. Ein Spieler hostet das Spiel als Server; die anderen drei verbinden sich als Clients. Die gesamte Benutzeroberfläche ist in **Tkinter** umgesetzt und läuft im Vollbildmodus.
+Optional kann HanTa installiert werden, um die Hinweis-Validierung zu verbessern:
 
-| Eigenschaft | Wert |
-|---|---|
-| Sprache | Python 3.x |
-| UI-Framework | Tkinter (Standard-Bibliothek) |
-| Netzwerk | TCP-Sockets, zeilenbasiertes JSON |
-| Spieleranzahl | 4 (fest) |
-| Wortliste | 4 138 deutsche Substantive |
+pip install HanTa  
 
----
+### Wie starte ich dieses Programm?
 
-## 2. Spielregeln
+Server starten (1 Spieler):
 
-### Grundprinzip
-
-Das Spielfeld besteht aus einem **5×5-Raster** mit 25 zufällig gewählten Wörtern. Jedes Wort gehört verdeckt zu einer Farbe:
-
-| Farbe | Bedeutung | Anzahl |
-|---|---|---|
-| Rot | Wörter des roten Teams | 8 oder 9 |
-| Blau | Wörter des blauen Teams | 8 oder 9 |
-| Weiß | Neutrale Wörter | 7 |
-| Schwarz | Assassin-Karte (sofort verloren) | 1 |
-
-Das Team, das **beginnt**, erhält **9 eigene Karten**; das andere Team **8**. Welches Team anfängt, wird zufällig bestimmt und rotiert nach jeder Runde.
-
-### Rollen
-
-Jedes Team hat zwei Spieler:
-
-- **Spymaster (Instructor):** Kennt alle Farben auf dem Feld. Gibt pro Zug **einen Hinweis** (ein deutsches Substantiv + eine Zahl) und darf keine Karten anklicken.
-- **Agent:** Sieht das Feld ohne Farben (außer bereits aufgedeckten). Klickt Kacheln basierend auf dem Hinweis an.
-
-### Spielablauf
-
-1. Der Spymaster des aktiven Teams gibt einen Hinweis (Wort + Zahl).
-2. Der Agent des aktiven Teams klickt Kacheln an.
-3. Deckt der Agent eine **eigene Karte** auf → Zug läuft weiter.
-4. Deckt der Agent eine **gegnerische oder neutrale Karte** auf → Zug endet, Gegner ist dran.
-5. Deckt der Agent die **schwarze Karte** auf → das aktive Team **verliert sofort**.
-6. Ein Team gewinnt die Runde, wenn alle seine Karten gefunden wurden.
-7. Das erste Team, das **3 Runden** gewinnt, gewinnt das **Gesamtspiel**. Danach wird keine neue Runde mehr gestartet.
-
----
-
-## 3. Voraussetzungen & Installation
-
-### Python-Version
-
-Python **3.10 oder neuer** wird empfohlen (wegen `match`-Syntax in neueren Ergänzungen und `X | Y`-Union-Typen).
-
-### Pflichtabhängigkeiten
-
-Alle folgenden Pakete gehören zur Python-Standardbibliothek und müssen nicht installiert werden:
-
-- `tkinter`
-- `socket`
-- `threading`
-- `json`
-- `re`
-- `random`
-- `itertools`
-
-### Optionale Abhängigkeit: HanTa
-
-```bash
-pip install HanTa
-```
-
-**HanTa** ist ein deutscher Morphologie-Tagger. Er wird in der Hinweis-Validierung eingesetzt, um sicherzustellen, dass nur echte deutsche Substantive als Hinweise zugelassen werden.
-
-- **Mit HanTa:** POS-Tagging (Part-of-Speech) prüft exakt, ob das Wort ein Substantiv ist.
-- **Ohne HanTa:** Fallback auf einfache Großschreibungsprüfung (weniger präzise).
-
-Das Modell `morphmodel_ger.pgz` muss sich im Arbeitsverzeichnis befinden oder wird automatisch vom Paket mitgeliefert.
-
-### Netzwerkkonfiguration
-
-Der **Port** ist in `main.py` fest eingetragen:
-
-```python
-PORT = 50001   # TCP-Port (muss auf dem Server frei sein)
-```
-
-Die **Server-IP** wird nicht mehr im Code gesetzt. Clients geben sie beim Start über einen Dialog ein (siehe [Abschnitt 4](#4-spiel-starten)). Der Server-Rechner muss dieselbe IP nach außen bekannt geben – im Schulnetz üblicherweise `10.97.36.101`.
-
-Alle vier Rechner müssen sich im selben Netzwerk befinden und der Port darf nicht durch eine Firewall blockiert werden.
-
----
-
-## 4. Spiel starten
-
-### Server (1 Spieler)
-(muss momentan ein bestimmter Rechner sein, da die IP gehardcoded wurde)
-
-```bash
 python main.py server
-```
 
-Das Fenster zeigt zunächst „Warte auf Spieler…" und wechselt automatisch zur Rollenanzeige, sobald alle vier Spieler verbunden sind.
+Clients starten (3 Spieler, kein Argument):
 
-### Clients (3 Spieler)
-
-```bash
 python main.py
-```
+Beim Client-Start öffnet sich ein IP-Dialog: Server-IP eintippen oder per Standard-Button die Schul-IP (`10.97.36.101`) setzen, dann Verbinden.
 
-(kein Argument = Client-Modus)
+Sobald der dritte Client verbunden ist, startet das Spiel automatisch für alle.
 
-Beim Start erscheint ein **IP-Eingabe-Dialog**:
-
-- **Eingabefeld:** Server-IP manuell eintippen
-- **„Standard"-Button:** trägt automatisch die Schul-Server-IP `10.97.36.101` ein
-- **„Verbinden"-Button** (oder `Enter`): baut die Verbindung auf
-
-### Startreihenfolge
-
-1. Server starten
-2. Drei Clients starten (Reihenfolge unter den Clients egal)
-3. Jeden Client mit der Server-IP verbinden (Standard-Button oder manuell eingeben)
-4. Sobald der dritte Client verbunden ist, startet das Spiel automatisch für alle
+Es ist vorgesehen, dass am Agent-PC auch mehrere Spieler sitzen und zusammen spielen, der Spymaster soll aber alleine sein. 
 
 ---
 
-## 5. Architektur
+## Spielregeln (Kurzfassung)
 
-### Rollenverteilung
+5×5-Raster mit 25 Wörtern. Verdeckte Farbverteilung: 8/9 rot, 8/9 blau, 7 weiß (neutral), 1 schwarz (Terrorist). Das beginnende Team hat 9 eigene Karten, das andere 8; der Startvorteil rotiert jede Runde.
 
-`login.py` erstellt beim Serverstart alle vier Rollen-Farben-Kombinationen (Spymaster Rot, Spymaster Blau, Agent Rot, Agent Blau), mischt sie zufällig und verteilt sie:
+Pro Team gibt es einen Spymaster(kennt alle Farben, gibt pro Zug ein Substantiv und eine  Zahl) und einen Agent (deckt Kacheln auf).
 
-- `server` → erster Eintrag (Spieler, der den Server hostet)
-- `client_1`, `client_2`, `client_3` → nach Verbindungsreihenfolge
+- Eigene Karte aufgedeckt → Zug geht weiter
+- Gegnerische/neutrale Karte → Zug endet
+- Schwarze Karte → Team veliert sofort die Runde
+- Alle eigenen Karten gefunden → Runde gewonnen
 
----
+Nach jeder Runde werden die Rollen neu verteilt (in den dementsprechenden Teams)
 
-## 6. Modulbeschreibungen
+Das Team, das zuerst 3 Runden gewinnt, gewinnt das Spiel.
 
-### `main.py` – Entry Point & Netzwerkschicht
+### Hinweis-Validierung
 
-Enthält sowohl Server- als auch Client-Logik in einer Datei.
+_is_valid_hint() in ui.py lehnt ungültige Hinweise ab. Die wichtigsten Regeln für die Hinweise vom Spymaster sind: 
 
-**Globale Variablen (Server-Seite):**
+- Genau ein Wort, nur Buchstaben (inkl. Umlaute/ß), min. 2 Zeichen, plausibler Vokalanteil
+- Muss großgeschrieben sein
+- Darf kein Wort vom Spielfeld sein – auch nicht als Teilstring oder mit gleichem Wortstamm/Konsonantenskelett (verhindert z. B. "Hundehaus" bei "Hund" auf dem Brett)
 
-| Variable | Typ | Bedeutung |
-|---|---|---|
-| `_clients` | `list` | Alle verbundenen Sockets mit (conn, role, color) |
-| `_clients_lock` | `Lock` | Thread-Sicherheit beim Zugriff auf `_clients` |
-| `_controller` | `GameController` | Instanz der Spiellogik (wird bei Spielstart erzeugt) |
-| `_game_started` | `Event` | Wird gesetzt, sobald alle 3 Clients verbunden sind |
 
-**Wichtige Funktionen:**
+## Architektur
 
-| Funktion | Beschreibung |
-|---|---|
-| `run_server(...)` | Startet TCP-Server, nimmt 3 Clients an, gibt `(role, color, send_fn)` zurück |
-| `run_client(server_ip, ...)` | Verbindet mit `server_ip`, gibt `(role, color, send_fn)` zurück |
-| `_handle_action(color, msg)` | Leitet Spielaktion an `GameController` weiter, broadcasted den neuen State |
-| `_broadcast(msg)` | Sendet JSON-Nachricht an alle verbundenen Clients |
-| `_start_new_round()` | Startet neue Runde, tauscht Rollen, sendet State |
-| `_client_thread(conn, role, color)` | Thread pro Client: empfängt Nachrichten in Endlosschleife |
 
----
+main.py:          Entry Point + TCP-Netzwerk (Server- & Client-Logik)
+controller.py:    GameController – die gesamte Spiellogik (nur Server)
+ui.py:            CodenamesUI (Tkinter) + Hinweis-Validierung
+login.py:         assign_role_color() – zufällige Rollenvergabe
+words.py:         Wortliste
+(test_codenames.py: Testsuite)
 
-### `controller.py` – Spiellogik
 
-**Klasse `GameController`**
+Die Spiellogik liegt ausschließlich serverseitig im GameController, also auf dem Server werden die tatsächlichen Rechenoperationen durchgeführt. Clients sind reine UI-Schicht, sie schicken also Aktionen, empfangen State-Updates und rendern nur. 
 
-Verwaltet den gesamten Spielzustand. Wird ausschließlich auf der Server-Seite instanziiert.
+login.py erzeugt beim Serverstart die vier Rollen-Farb-Kombinationen (Spymaster/Agent × Rot/Blau), mischt sie und verteilt sie zufällig auf den Server und die 3 Clients.
 
-**Konstanten:**
 
-| Konstante | Wert | Bedeutung |
-|---|---|---|
-| `STARTING_TEAM_CARDS` | 9 | Karten des beginnenden Teams |
-| `OTHER_TEAM_CARDS` | 8 | Karten des anderen Teams |
-| `WHITE_COUNT` | 7 | Neutrale Karten |
-| `BLACK_COUNT` | 1 | Assassin-Karte |
-| `TOTAL` | 25 | Gesamtanzahl Kacheln |
-| `WIN_THRESHOLD` | 3 | Rundensiege für den Gesamtsieg |
+## Netzwerkprotokoll
 
-**Methoden:**
+Das Netzwerk ist ein Client-Server System, das über TCP funktioniert und JSON-Nachrichten als Python Dictionaries versendet und empfängt.
 
-| Methode | Parameter | Rückgabe | Beschreibung |
-|---|---|---|---|
-| `submit_hint(team, word, count)` | Team-Farbe, Hinweiswort, Anzahl | `dict` | Instructor gibt Hinweis |
-| `reveal_tile(team, word)` | Team-Farbe, Wort | `dict` | Agent deckt Kachel auf |
-| `end_turn(team)` | Team-Farbe | `dict` | Agent beendet Zug freiwillig |
-| `get_state()` | – | `dict` | Vollständiger Spielzustand-Snapshot |
-| `start_new_round()` | – | – | Neue Runde (Punkte bleiben) |
+Server -> Client
 
-**Rückgabe-Keys von `submit_hint`:**
+login{role, color}:         Rolle beim Verbinden wird zugeteilt
+game_start{state}:          Alle 4 verbunden, Spiel startet 
+state_update{state}:        Zustand hat sich geändert 
+role_update{role, color}:   Neue Runde, Rollen gewechselt 
 
-```python
-{"ok": bool, "error": str, "state": dict}
-```
+CLient -> Server
 
-**Rückgabe-Keys von `reveal_tile`:**
+submit_hint{word, count}:   Spymaster schickt Hinweis an seinen verbündteten Agenten
+reveal_tile{word}:          Agent deckt karte auf
+end_turn{}:                 Agent beendet den Zug
 
-```python
-{
-    "ok":          bool,
-    "color":       str,          # Farbe der aufgedeckten Kachel
-    "correct":     bool,         # True wenn eigene Kachel
-    "turn_over":   bool,         # True wenn Zug wechselt
-    "round_over":  bool,         # True wenn Runde endet
-    "winner":      str | None,   # "Red" oder "Blue" bei round_over
-    "end_reason":  str | None,   # "assassin", "all_found", "neutral", "wrong_guess"
-    "state":       dict,
-}
-```
+## KI Nutzung
+Die Scripts wurden alle mithilfe von KI (Claude Code Opus 4.8 High) erstellt, da wir beide noch relativ wenig Erfahrung hatten mit TCP und JSON. Dazu war die UI auch sehr aufwendig (fast 1000 Zeilen). Dafür konnten wir besser uns auf das Spiel an sich und die Prozesse beim Entwickeln von anspruchsvollerer Software konzentrieren, wie z. B. Server-Client mit TCP und JSON, saubere Software-Architektur und Implementierung von Git. 
+Dafür ist die Dokumentation und das README 100% ohne KI geschrieben worden. 
 
----
 
-### `ui.py` – Benutzeroberfläche
 
-**Klasse `CodenamesUI`**
 
-Tkinter-Vollbild-UI. Kommuniziert mit `main.py` ausschließlich über drei Callbacks:
-
-| Callback | Signatur | Wann ausgelöst |
-|---|---|---|
-| `on_tile_click` | `fn(word: str)` | Agent klickt eine Kachel |
-| `on_end_turn` | `fn()` | Agent klickt „Zug beenden" |
-| `on_submit_hint` | `fn(word: str, count: int)` | Instructor sendet Hinweis |
-
-**Bildschirme & Dialoge:**
-
-| Methode | Beschreibung |
-|---|---|
-| `show_ip_dialog(on_confirm, default_ip)` | Modaler IP-Eingabe-Dialog beim Client-Start |
-| `_show_waiting()` | Wartebildschirm (noch nicht alle Spieler verbunden) |
-| `show_role(role, color)` | Rollenanzeige (wartet auf Spielstart) |
-| `show_game_from_state(state)` | Spielfeld (Hauptansicht) |
-
-`show_ip_dialog` öffnet ein `Toplevel`-Fenster mit Eingabefeld, „Standard"-Button (setzt `default_ip`) und „Verbinden"-Button. Nach Bestätigung wird `on_confirm(ip)` aufgerufen und der Dialog geschlossen.
-
-**Hilfsfunktionen (Modul-Ebene):**
-
-| Funktion | Beschreibung |
-|---|---|
-| `_normalize(w)` | Kleinbuchstaben, nur deutsche Buchstaben |
-| `_flatten(w)` | Wie `_normalize`, zusätzlich Umlaute → Basisvokale |
-| `_get_stem(w)` | Grober Wortstamm (Präfix/Suffix-Stripping) |
-| `_get_tagger()` | Lädt HanTa-Tagger (Singleton, lazy) |
-
----
-
-### `login.py` – Rollenvergabe
-
-```python
-assign_role_color() -> dict
-```
-
-Erstellt alle vier Rollen-Farben-Kombinationen und mischt sie zufällig:
-
-```python
-{
-    "server":   ("instructor", "Red"),
-    "client_1": ("agent",      "Red"),
-    "client_2": ("instructor", "Blue"),
-    "client_3": ("agent",      "Blue"),
-}
-```
-
-Jede Kombination kommt genau einmal vor. Die Zuweisung ist bei jedem Spielstart neu zufällig.
-
----
-
-### `words.py` – Wortliste
-
-Enthält die Liste `woerter` mit **4 138 deutschen Substantiven**. Pro Runde werden daraus 25 zufällig ausgewählt (`random.sample`).
-
----
-
-### `test_codenames.py` – Testsuite
-
-Vollständige Unit- und Integrationstests (siehe [Abschnitt 10](#10-tests)).
-
----
-
-### `server.py` / `client.py` – Prototyp-Dateien
-
-Diese Dateien sind **nicht aktiv** und stammen aus der frühen Entwicklungsphase. Die produktive Netzwerklogik befindet sich vollständig in `main.py`.
-
----
-
-## 7. Netzwerkprotokoll
-
-Die Kommunikation erfolgt über **TCP-Sockets** mit **zeilenbasiertem JSON** (jede Nachricht endet mit `\n`).
-
-### Server → Client (Broadcast)
-
-| `type` | Payload | Bedeutung |
-|---|---|---|
-| `login` | `{role, color}` | Rollenverteilung beim Verbindungsaufbau |
-| `game_start` | `{state}` | Spielfeld bereit, alle 4 Spieler verbunden |
-| `state_update` | `{state}` | Spielzustand hat sich geändert |
-| `role_update` | `{role, color}` | Neue Runde, Rollen gewechselt |
-
-### Client → Server
-
-| `type` | Payload | Wer sendet |
-|---|---|---|
-| `submit_hint` | `{word, count}` | Aktiver Instructor |
-| `reveal_tile` | `{word}` | Aktiver Agent |
-| `end_turn` | `{}` | Aktiver Agent |
-
-### Nachrichtenformat (Beispiel)
-
-```json
-{"type": "submit_hint", "word": "Tier", "count": 2}\n
-```
-
-```json
-{"type": "state_update", "state": { ... }}\n
-```
-
----
-
-## 8. Spielzustand (State-Objekt)
-
-`GameController.get_state()` liefert folgenden Snapshot:
-
-```python
-{
-    # Brett
-    "board_full":        dict[str, str],   # {wort: farbe} – für Instructor
-    "board_agents":      dict[str, None | str], # {wort: farbe_oder_None} – für Agent
-    "revealed":          list[str],        # Liste aufgedeckter Wörter
-
-    # Aktueller Zug
-    "active_team":       str,              # "Red" oder "Blue"
-    "current_hint":      tuple | None,     # ("Wort", 2) oder None
-    "guesses_remaining": int,              # -1 = unbegrenzt
-
-    # Rundenstand
-    "red_found":         int,
-    "blue_found":        int,
-    "red_total":         int,              # 8 oder 9
-    "blue_total":        int,              # 8 oder 9
-    "starting_team":     str,             # Team das diese Runde begann
-
-    # Rundenende
-    "round_over":        bool,
-    "winner":            str | None,
-    "end_reason":        str | None,       # "assassin" | "all_found"
-
-    # Gesamtstand (über alle Runden)
-    "red_wins":          int,
-    "blue_wins":         int,
-
-    # Gesamtspiel-Ende
-    "game_over":         bool,        # True wenn ein Team WIN_THRESHOLD Runden gewonnen hat
-    "game_winner":       str | None,  # "Red" oder "Blue"
-    "win_threshold":     int,         # Aktuell: 3
-}
-```
-
-**Wichtig:** `board_full` und `board_agents` unterscheiden sich:
-- `board_full` enthält für jede Kachel die echte Farbe → wird nur an Instructors gesendet
-- `board_agents` enthält `None` für noch nicht aufgedeckte Kacheln → für Agents
-
-In der aktuellen Implementierung sendet der Server **denselben State** an alle; die UI selbst wählt je nach Rolle die richtige Ansicht (`board_full` vs. `board_agents`).
-
----
-
-## 9. Hinweis-Validierung
-
-Die Methode `_is_valid_hint()` in `ui.py` prüft Hinweise in folgender Reihenfolge:
-
-| Stufe | Prüfung | Beispiel-Fehler |
-|---|---|---|
-| 1 | Nicht leer | `""` |
-| 2 | Nur ein Wort (kein Leerzeichen) | `"zwei Wörter"` |
-| 3 | Nur Buchstaben (inkl. Umlaute/ß) | `"Hund2"` |
-| 4 | Mindestlänge 2 Zeichen | `"A"` |
-| 5 | Mindestens ein Vokal | `"Str"` |
-| 6 | Vokal-Anteil ≥ 10 % | Buchstabenketten |
-| 7 | Keine 4+ gleichen Zeichen hintereinander | `"Haaaar"` |
-| 8 | POS-Check (HanTa): muss Substantiv sein | `"laufen"` |
-| 9 | Kein direkter Match mit Gitterwort | `"Hund"` wenn im Grid |
-| 10 | Hinweis enthält kein Gitterwort als Teilstring | `"Hundehaus"` |
-| 11 | Hinweis ist kein Teilstring eines Gitterworts | `"Hund"` in `"Hundehaus"` |
-| 12 | Kein gleicher Wortstamm (via `_get_stem`) | `"Verarbeitung"` / `"Arbeit"` |
-| 13 | Konsonantenskelett unterscheidet sich (≥ 3 Kons.) | klanglich ähnliche Wörter |
-
----
-
-## 10. Tests
-
-### Testsuite starten
-
-```bash
-python -m pytest test_codenames.py -v
-# oder
-python test_codenames.py
-```
-
-### Testklassen
-
-| Klasse | Bereich | Tests |
-|---|---|---|
-| `TestBoardGeneration` | Spielfeld-Erzeugung | Kachelanzahl, Farbverteilung, Eindeutigkeit |
-| `TestSubmitHint` | Hinweis geben | Gültige/ungültige Hints, Duplikate, falsche Teams |
-| `TestRevealTile` | Kachel aufdecken | Eigene/fremde/schwarze Kacheln, Rundenende |
-| `TestEndTurn` | Zug beenden | Teamwechsel, falsches Team, fehlender Hinweis |
-| `TestGetState` | State-Snapshot | Pflichtschlüssel, board_agents-Maskierung |
-| `TestLoginAssignment` | Rollenvergabe | 4 Slots, alle Kombinationen eindeutig |
-| `TestNormalize` | `_normalize()` | Kleinbuchstaben, Sonderzeichen, Umlaute |
-| `TestFlatten` | `_flatten()` | Umlaut-Konvertierung |
-| `TestIsValidHint` | Hinweis-Validierung | Alle Fehlerfälle |
-| `TestPerformance` | Performance | Board-Gen < 50 ms, State < 5 ms, Vollspiel < 500 ms |
-| `TestUIWidgets` | Tkinter-Widgets | Bildschirmaufbau, Callbacks, Button-Zustände, IP-Dialog |
-| `TestFullRoundIntegration` | Vollrunde | Rot gewinnt, Assassin, neue Runde |
-| `TestNetworkSimulation` | Netzwerk (lokal) | TCP-Simulation auf 127.0.0.1, vollständiges Spiel |
-
-### Performance-Grenzwerte
-
-| Test | Limit |
-|---|---|
-| Board-Erzeugung | < 50 ms |
-| `get_state()` | < 5 ms |
-| Vollständiges Spiel (simuliert) | < 500 ms |
-| Hinweis-Validierung | < 5 ms |
-
-### Netzwerk-Tests (`TestNetworkSimulation`)
-
-Diese Tests starten einen echten lokalen TCP-Server auf einem freien Port (`127.0.0.1`). `run_client()` wird direkt mit `'127.0.0.1'` aufgerufen, sodass kein echter Netzwerkverkehr entsteht. Die `LocalGameSession`-Klasse verwaltet Server- und Client-Threads automatisch als Context Manager.
-
-### UI-Tests (`TestUIWidgets`)
-
-Benötigen ein laufendes Display (werden in headless-Umgebungen automatisch übersprungen). Enthalten 5 Tests für `show_ip_dialog`: Dialog öffnet sich, Standard-Button setzt die Default-IP, Verbinden-Button ruft den Callback mit der eingegebenen IP auf, Enter-Taste bestätigt, Dialog schließt sich nach Bestätigung.
-
----
-
-## 11. Dateiübersicht
-
-```
-codenames/
-├── main.py              Entry Point: Server-/Client-Modus, TCP-Netzwerklogik
-├── controller.py        Spiellogik: GameController (nur Server)
-├── ui.py                Tkinter-UI: CodenamesUI + Hinweis-Validierung
-├── login.py             Rollenvergabe: assign_role_color()
-├── words.py             Wortliste: 4 138 deutsche Substantive
-├── test_codenames.py    Vollständige Testsuite (Unit + Integration + Netzwerk)
-└── DOKUMENTATION.md     Diese Datei
-```
-
----
-
-*Dokumentation erstellt für das Schulprojekt Codenames – Python-Netzwerkspiel.*
