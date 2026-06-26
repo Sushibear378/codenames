@@ -36,9 +36,3 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
-app = BUNDLE(
-    exe,
-    name='codenames_client.app',
-    icon=None,
-    bundle_identifier=None,
-)

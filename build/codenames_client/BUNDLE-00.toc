@@ -1,3 +1,0 @@
-([('codenames_client',
-   '/Users/mioboege/Documents/Schule/codenames/codenames/dist/codenames_client',
-   'EXECUTABLE')],)
