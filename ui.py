@@ -3,7 +3,6 @@ import tkinter as tk
 from tkinter import messagebox
 import re
 
-# Die UI ist mithilfe von künstlicher Intelligenz generiert worden. Dies gilt besonders für das Design
 
 # ── Farbpalette ────────────────────────────────────────────────────────────────
 # Alle Farben sind als Hex-Strings definiert, damit sie zentral geändert werden können.
