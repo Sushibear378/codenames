@@ -306,14 +306,12 @@ class CodenamesUI:
         return frame
 
     def _paint_dots(self, cv: tk.Canvas, w: int, h: int):
-        """Zeichnet ein gleichmäßiges Punktraster auf das Canvas als dekorativen Hintergrund.
-
-        Punkte haben einen Abstand von 30 Pixeln und erscheinen als 2×2-Pixel-Ovale.
-        """
-        dot_clr = "#1c2840"   # Farbe der Hintergrundpunkte (dunkelblau)
-        for x in range(30, w + 30, 30):
-            for y in range(30, h + 30, 30):
-                cv.create_oval(x - 1, y - 1, x + 1, y + 1, fill=dot_clr, outline="")
+        """Zeichnet ein feines, taktisches Raster auf das Canvas als Hintergrund (Radar/Blueprint-Stil)."""
+        grid_clr = "#111824"   # Subtile, dunkle Linienfarbe für das Raster
+        for x in range(0, w, 40):
+            cv.create_line(x, 0, x, h, fill=grid_clr, dash=(2, 4))
+        for y in range(0, h, 40):
+            cv.create_line(0, y, w, y, fill=grid_clr, dash=(2, 4))
 
     def _team_color(self, team: str) -> str:
         """Gibt die UI-Farbe für das angegebene Team zurück (RED_CLR oder BLUE_CLR)."""
@@ -708,7 +706,7 @@ class CodenamesUI:
                     ).pack(fill=tk.BOTH, expand=True)
                 elif can_guess and is_unrevealed:
                     # Aktiver Agent: Noch nicht aufgedeckte Kachel als klickbarer Button
-                    tk.Button(
+                    btn = tk.Button(
                         cell, text=word,
                         font=("Segoe UI", font_sz, "bold"),
                         bg=HIDDEN_CLR, fg=FG_LIGHT,
@@ -716,7 +714,10 @@ class CodenamesUI:
                         activeforeground=FG_LIGHT,
                         relief="flat", cursor="hand2",
                         command=lambda w=word: self._tile_clicked(w),
-                    ).pack(fill=tk.BOTH, expand=True)
+                    )
+                    btn.pack(fill=tk.BOTH, expand=True)
+                    btn.bind("<Enter>", lambda e, b=btn: b.config(bg="#1f2a38"))
+                    btn.bind("<Leave>", lambda e, b=btn: b.config(bg=HIDDEN_CLR))
                 else:
                     # Inaktiver Spieler oder bereits aufgedeckte Kachel: nur Label (nicht klickbar)
                     tk.Label(
@@ -755,6 +756,7 @@ class CodenamesUI:
         # Abschlusstext je nach Gewinnbedingung
         if reason == "assassin":
             detail = "Die schwarze Karte wurde aufgedeckt!"
+            self.root.after(100, self._trigger_glitch_effect)
         else:
             detail = "Alle eigenen Karten gefunden!"
 
@@ -777,6 +779,25 @@ class CodenamesUI:
                      text="Neue Runde startet in 5 Sekunden…",
                      font=("Segoe UI", 11),
                      fg=FG_LIGHT, bg=team_clr).pack()
+
+    def _trigger_glitch_effect(self):
+        """Erzeugt einen visuellen Glitch-Effekt (rotes Aufblitzen) für den Assassin."""
+        original_bg = BG
+        flash_colors = [GOLD, "#000000", GOLD, original_bg]
+        delay = 0
+
+        for color in flash_colors:
+            self.root.after(delay, lambda c=color: self._apply_glitch_color(c))
+            delay += 150
+
+    def _apply_glitch_color(self, color):
+        self.root.config(bg=color)
+        for widget in self.root.winfo_children():
+            try:
+                if widget.winfo_class() in ('Frame', 'Canvas', 'Label'):
+                    widget.config(bg=color)
+            except:
+                pass
 
     def _build_score_bar(self, state: dict, active_team: str):
         """Baut die Punkte-Leiste am oberen Fensterrand auf.
